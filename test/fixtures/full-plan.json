@@ -1,0 +1,597 @@
+{
+  "version": 1,
+  "title": "Invite teammates by email link",
+  "summary": "Workspace admins can invite people by email. The invitee gets a single-use link, signs in or signs up, and lands in the workspace with the role the admin chose. Today admins create accounts by hand and share passwords over chat.",
+  "budget": "standard",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Who can send invitations?",
+      "aspect": "scope",
+      "select": "single",
+      "context": "Decides the authorization model for the whole feature.",
+      "options": [
+        {
+          "id": "admins",
+          "label": "Workspace admins only",
+          "recommended": true
+        },
+        {
+          "id": "permission",
+          "label": "Admins plus members with an invite permission"
+        },
+        {
+          "id": "anyone",
+          "label": "Any member",
+          "detail": "Admins approve before the invite is sent."
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "question": "Which roles can an invitation grant?",
+      "aspect": "scope",
+      "select": "multiple",
+      "options": [
+        {
+          "id": "member",
+          "label": "Member",
+          "recommended": true
+        },
+        {
+          "id": "admin",
+          "label": "Admin"
+        },
+        {
+          "id": "guest",
+          "label": "Guest (read-only)",
+          "recommended": true
+        }
+      ]
+    },
+    {
+      "id": "D3",
+      "question": "How does the invitee get in if they have no account?",
+      "aspect": "requirements",
+      "select": "single",
+      "options": [
+        {
+          "id": "signup",
+          "label": "Sign up from the invite link",
+          "recommended": true
+        },
+        {
+          "id": "sso",
+          "label": "Only through the workspace's SSO"
+        },
+        {
+          "id": "magic",
+          "label": "Passwordless magic link, account created on accept"
+        }
+      ]
+    },
+    {
+      "id": "D4",
+      "question": "How long should an invitation stay valid?",
+      "aspect": "requirements",
+      "select": "single",
+      "context": "Shorter limits a leaked link; longer means fewer *my link expired* tickets.",
+      "options": [
+        {
+          "id": "72h",
+          "label": "72 hours"
+        },
+        {
+          "id": "7d",
+          "label": "7 days",
+          "detail": "Matches password-reset links elsewhere in the app.",
+          "recommended": true
+        },
+        {
+          "id": "30d",
+          "label": "30 days"
+        }
+      ]
+    },
+    {
+      "id": "D5",
+      "question": "What must the invitee's account match to accept?",
+      "aspect": "constraints",
+      "select": "single",
+      "options": [
+        {
+          "id": "exact",
+          "label": "The exact invited email, verified",
+          "recommended": true
+        },
+        {
+          "id": "domain",
+          "label": "Any verified email on the same domain"
+        },
+        {
+          "id": "none",
+          "label": "Nothing - the link is the credential"
+        }
+      ]
+    },
+    {
+      "id": "D6",
+      "question": "How do pending invitations interact with seat limits?",
+      "aspect": "constraints",
+      "select": "single",
+      "options": [
+        {
+          "id": "reserve",
+          "label": "A pending invite reserves a seat",
+          "recommended": true
+        },
+        {
+          "id": "accept",
+          "label": "Seats are checked only on accept"
+        },
+        {
+          "id": "ignore",
+          "label": "Invites ignore seat limits; billing catches up"
+        }
+      ]
+    },
+    {
+      "id": "D7",
+      "question": "What can admins do with a pending invitation?",
+      "aspect": "requirements",
+      "select": "multiple",
+      "options": [
+        {
+          "id": "revoke",
+          "label": "Revoke it",
+          "recommended": true
+        },
+        {
+          "id": "resend",
+          "label": "Resend the email",
+          "recommended": true
+        },
+        {
+          "id": "role",
+          "label": "Change the role"
+        },
+        {
+          "id": "list",
+          "label": "See who invited whom and when",
+          "recommended": true
+        }
+      ]
+    },
+    {
+      "id": "D8",
+      "question": "Should admins invite several people at once?",
+      "aspect": "scope",
+      "select": "single",
+      "options": [
+        {
+          "id": "one",
+          "label": "One email per invite in v1",
+          "recommended": true
+        },
+        {
+          "id": "list",
+          "label": "A comma-separated list"
+        },
+        {
+          "id": "csv",
+          "label": "CSV upload"
+        }
+      ]
+    },
+    {
+      "id": "D9",
+      "question": "Who gets notified about invitation events?",
+      "aspect": "requirements",
+      "select": "multiple",
+      "options": [
+        {
+          "id": "inviter",
+          "label": "The inviter, when accepted"
+        },
+        {
+          "id": "admins",
+          "label": "All admins, when anyone joins"
+        },
+        {
+          "id": "none",
+          "label": "Nobody - the members page is enough",
+          "recommended": true
+        }
+      ]
+    },
+    {
+      "id": "D10",
+      "question": "How are invite emails sent?",
+      "aspect": "technical",
+      "select": "single",
+      "options": [
+        {
+          "id": "existing",
+          "label": "The existing transactional mailer and templates",
+          "recommended": true
+        },
+        {
+          "id": "provider",
+          "label": "A new template in the email provider"
+        },
+        {
+          "id": "inline",
+          "label": "Synchronously in the request"
+        }
+      ]
+    }
+  ],
+  "tabs": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "kind": "overview",
+      "problem": "Adding a teammate means an admin creates the account, picks a temporary password, and sends it over Slack. Support sees about a dozen *\"I can't log in\"* tickets a week from this, and passwords sit in chat history indefinitely.",
+      "change": "Admins enter an email and a role. The invitee receives a link that is valid once and for seven days. Following it signs them in (or up) and creates their membership.",
+      "goals": [
+        {
+          "title": "No shared passwords",
+          "detail": "Nobody but the invitee ever knows their credentials."
+        },
+        {
+          "title": "Role chosen up front",
+          "detail": "The membership is created with the role the admin picked, so there is no second step to fix permissions."
+        },
+        {
+          "title": "Admins can see and revoke pending invites",
+          "detail": "A pending invitation is visible on the members page until it is accepted, revoked or expired."
+        }
+      ],
+      "out_of_scope": [
+        "Bulk invites or CSV upload",
+        "Auto-join by email domain",
+        "Inviting someone to more than one workspace at once",
+        "Changing the email address on a pending invite (revoke and re-invite instead)",
+        "Custom invitation email templates"
+      ],
+      "findings": [
+        {
+          "note": "Memberships already carry a `role` enum and a unique index on `(workspace_id, user_id)`; the invite flow should create through `Memberships::Create` rather than inserting directly.",
+          "refs": ["app/models/membership.rb", "app/services/memberships/create.rb"]
+        },
+        {
+          "note": "Authorization is a Pundit policy per model. `WorkspacePolicy#manage_members?` is the check the members page uses today.",
+          "refs": ["app/policies/workspace_policy.rb"]
+        }
+      ]
+    },
+    {
+      "id": "flows",
+      "title": "Flows",
+      "kind": "flows",
+      "flows": [
+        {
+          "id": "F1",
+          "title": "Admin sends an invitation",
+          "trigger": "An admin opens **Members \u2192 Invite**, enters an email and picks a role.",
+          "participants": [
+            {
+              "id": "admin",
+              "label": "Admin",
+              "kind": "actor"
+            },
+            {
+              "id": "web",
+              "label": "Web app"
+            },
+            {
+              "id": "api",
+              "label": "Invitations API"
+            },
+            {
+              "id": "db",
+              "label": "Postgres",
+              "kind": "store"
+            },
+            {
+              "id": "mail",
+              "label": "Mailer",
+              "kind": "external"
+            }
+          ],
+          "steps": [
+            {
+              "from": "admin",
+              "to": "web",
+              "label": "Enter email and role"
+            },
+            {
+              "from": "web",
+              "to": "api",
+              "label": "POST /invitations"
+            },
+            {
+              "from": "api",
+              "to": "api",
+              "label": "Authorize manage_members? and check seat limit"
+            },
+            {
+              "from": "api",
+              "to": "db",
+              "label": "Insert invitation with hashed token"
+            },
+            {
+              "from": "api",
+              "to": "mail",
+              "label": "Enqueue invite email with raw token"
+            },
+            {
+              "from": "api",
+              "to": "web",
+              "label": "201 pending invitation",
+              "reply": true
+            },
+            {
+              "note": "The raw token exists only in the email. The database stores its SHA-256.",
+              "over": ["api", "db"]
+            }
+          ],
+          "state": {
+            "creates": ["`invitations` row: email, role, token digest, expires_at"],
+            "updates": [],
+            "reads": ["Workspace seat limit", "Existing memberships for this email"]
+          }
+        },
+        {
+          "id": "F2",
+          "title": "Invitee accepts",
+          "trigger": "The invitee opens the link from the email.",
+          "participants": [
+            {
+              "id": "invitee",
+              "label": "Invitee",
+              "kind": "actor"
+            },
+            {
+              "id": "web",
+              "label": "Web app"
+            },
+            {
+              "id": "api",
+              "label": "Invitations API"
+            },
+            {
+              "id": "db",
+              "label": "Postgres",
+              "kind": "store"
+            }
+          ],
+          "steps": [
+            {
+              "from": "invitee",
+              "to": "web",
+              "label": "Open /invitations/:token"
+            },
+            {
+              "from": "web",
+              "to": "api",
+              "label": "Look up by token digest"
+            },
+            {
+              "from": "api",
+              "to": "web",
+              "label": "Workspace name, inviter, role",
+              "reply": true
+            },
+            {
+              "from": "invitee",
+              "to": "web",
+              "label": "Sign in or sign up"
+            },
+            {
+              "from": "web",
+              "to": "api",
+              "label": "POST /invitations/:token/accept"
+            },
+            {
+              "from": "api",
+              "to": "db",
+              "label": "Lock invitation, create membership, mark accepted"
+            },
+            {
+              "from": "api",
+              "to": "web",
+              "label": "Redirect into workspace",
+              "reply": true
+            }
+          ],
+          "state": {
+            "creates": ["`memberships` row with the invited role"],
+            "updates": ["`invitations.accepted_at`, `accepted_by_id`"],
+            "reads": ["Invitation by token digest", "Signed-in user's email"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "concepts",
+      "title": "Concepts",
+      "kind": "concepts",
+      "entities": [
+        {
+          "id": "C1",
+          "name": "Invitation",
+          "definition": "A single-use offer of a role in one workspace, addressed to one email.",
+          "rules": [
+            "Created only by a member who passes `manage_members?`",
+            "Pending until accepted, revoked or past `expires_at` (7 days)",
+            "Accepting it requires the signed-in user's verified email to match"
+          ],
+          "constraints": [
+            "At most one pending invitation per `(workspace_id, email)`",
+            "Token digest is unique; the raw token is never stored",
+            "Accepted, revoked and expired are terminal"
+          ]
+        },
+        {
+          "id": "C2",
+          "name": "Membership",
+          "definition": "Existing model. Gains no columns; invites create one through `Memberships::Create`.",
+          "rules": ["Role comes from the invitation, never from the accept request"]
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Data model",
+      "kind": "custom",
+      "blocks": [
+        {
+          "type": "table",
+          "id": "B1",
+          "caption": "New table: invitations",
+          "columns": ["Column", "Type", "Notes"],
+          "rows": [
+            ["`workspace_id`", "uuid", "FK, indexed"],
+            ["`email`", "citext", "Unique with `workspace_id` where pending"],
+            ["`role`", "membership_role", "Reuses the existing enum"],
+            ["`token_digest`", "text", "Unique; SHA-256 of the raw token"],
+            ["`expires_at`", "timestamptz", "Now + 7 days"],
+            ["`accepted_at`, `revoked_at`", "timestamptz", "Null while pending"]
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "decision",
+          "title": "A partial unique index enforces one pending invite per email",
+          "body": "`UNIQUE (workspace_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL`. Expired rows still count until a nightly job revokes them, which keeps the index simple."
+        }
+      ]
+    },
+    {
+      "id": "edge-cases",
+      "title": "Edge cases",
+      "kind": "edge_cases",
+      "cases": [
+        {
+          "id": "E1",
+          "title": "Link accepted twice at the same moment",
+          "priority": "high",
+          "detail": "Two tabs or a double click race the accept. Without a row lock both create a membership and one fails on the unique index with a 500. Lock the invitation row and treat an already-accepted invitation for the same user as success."
+        },
+        {
+          "id": "E2",
+          "title": "Invitee signs in with a different email",
+          "priority": "high",
+          "detail": "Someone forwards the link and the recipient signs in with their own account. Accepting would grant access to whoever holds the link. Refuse and explain which address the invite was for."
+        },
+        {
+          "id": "E3",
+          "title": "Seat limit reached between invite and accept",
+          "priority": "medium",
+          "detail": "The limit was checked at send time but other invites were accepted since. Re-check at accept and show the invitee a clear *ask your admin* page instead of a generic error."
+        },
+        {
+          "id": "E4",
+          "title": "Inviting someone who is already a member",
+          "priority": "medium",
+          "detail": "The admin does not realise they are already in. Return a validation error naming the existing role rather than sending a pointless email."
+        },
+        {
+          "id": "E5",
+          "title": "Inviter loses admin rights before acceptance",
+          "priority": "low",
+          "detail": "The invitation still reflects a decision the workspace made. Keep it valid, but show revoked-by-owner as the only way to cancel it."
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Security",
+      "kind": "security",
+      "risks": [
+        {
+          "id": "R1",
+          "title": "Invitation link as a bearer credential",
+          "level": "high",
+          "exposure": "Anyone who obtains the link could join the workspace with the invited role, including admin.",
+          "mitigations": [
+            "Require the signed-in user's verified email to match the invitation",
+            "Single use, 7-day expiry, and revocable from the members page",
+            "Store only the SHA-256 of the token so a database leak yields no usable links"
+          ]
+        },
+        {
+          "id": "R2",
+          "title": "Email enumeration through the invite form",
+          "level": "medium",
+          "exposure": "The *already a member* error reveals whether an address belongs to the workspace. Only admins can reach the form, so the exposure is to insiders.",
+          "mitigations": ["Keep the check behind `manage_members?`", "Rate-limit invitation creation per workspace"]
+        },
+        {
+          "id": "R3",
+          "title": "Invite spam",
+          "level": "low",
+          "exposure": "A compromised admin account could send many invitations from our domain.",
+          "mitigations": ["Cap pending invitations at 50 per workspace", "Rate-limit to 20 per hour per inviter"]
+        }
+      ]
+    },
+    {
+      "id": "gaps",
+      "title": "Gaps",
+      "kind": "gaps",
+      "gaps": [
+        {
+          "id": "G1",
+          "title": "SSO-only workspaces",
+          "detail": "I have not checked how workspaces that enforce SAML handle a sign-up from an invite link. That needs a decision from whoever owns SSO before slice planning."
+        },
+        {
+          "id": "G2",
+          "title": "Email deliverability",
+          "detail": "Bounces are not surfaced to the admin. The mailer supports bounce webhooks, but wiring them is a separate piece of work."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "question": "How long should an invitation stay valid?",
+      "context": "Shorter limits exposure of a leaked link; longer reduces *my link expired* tickets.",
+      "options": [
+        {
+          "id": "72h",
+          "label": "72 hours"
+        },
+        {
+          "id": "7d",
+          "label": "7 days",
+          "detail": "Matches password-reset links elsewhere in the app.",
+          "recommended": true
+        },
+        {
+          "id": "30d",
+          "label": "30 days"
+        }
+      ]
+    },
+    {
+      "id": "Q2",
+      "question": "Can a non-admin member invite people?",
+      "options": [
+        {
+          "id": "admins",
+          "label": "Admins only",
+          "recommended": true
+        },
+        {
+          "id": "members-guest",
+          "label": "Members can invite guests",
+          "detail": "Guests have read-only access; admins can still promote them."
+        }
+      ]
+    }
+  ]
+}

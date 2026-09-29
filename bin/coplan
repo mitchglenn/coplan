@@ -1,0 +1,4 @@
+#!/bin/sh
+# The `coplan` command in a Claude Code plugin install, which puts this directory on the PATH.
+# An npm install links bin/coplan.js instead.
+exec node "$(dirname "$0")/coplan.js" "$@"

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420" role="img" aria-labelledby="title desc">
+  <title id="title">How Coplan works</title>
+  <desc id="desc">The agent runs the coplan CLI, which talks HTTP to a review server on localhost; the server serves the review page in your browser over HTTP and a WebSocket. The CLI and the server both call one engine, which reads plan.json and plan.review.json and renders plan.html.</desc>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .card { fill: #0d1722; stroke: #2a333d; }
+    .title { font-size: 15px; font-weight: 650; fill: #e2e5e8; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; font-weight: 600; fill: #e2e5e8; }
+    .label { font-size: 12px; fill: #cbd0d6; }
+    .faint { font-size: 11.5px; fill: #8b9299; }
+    .box { fill: #151e28; stroke: #4c555f; stroke-width: 1.2; }
+    .agent { fill: #1c1a2e; stroke: #6d6aa8; stroke-width: 1.2; }
+    .you { fill: #0e2c56; stroke: #4d88ff; stroke-width: 1.2; }
+    .engine { fill: #0f2419; stroke: #2f7a57; stroke-width: 1.2; }
+    .disk { fill: #030705; stroke: #4c555f; stroke-width: 1.2; stroke-dasharray: 4 3; }
+    .line { stroke: #6d7379; stroke-width: 1.4; fill: none; }
+    .line-blue { stroke: #4d88ff; stroke-width: 1.4; fill: none; }
+    .line-green { stroke: #3a9a6d; stroke-width: 1.4; fill: none; }
+    .dash { stroke-dasharray: 5 4; }
+    .head { fill: #6d7379; }
+    .head-blue { fill: #4d88ff; }
+    .head-green { fill: #3a9a6d; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="head"/></marker>
+    <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="head-blue"/></marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="head-green"/></marker>
+  </defs>
+
+  <rect class="card" x="0.5" y="0.5" width="959" height="419" rx="16"/>
+
+  <!-- top row: who talks to whom -->
+  <rect class="agent" x="24" y="36" width="170" height="76" rx="10"/>
+  <text class="title" x="109" y="68" text-anchor="middle">Your agent</text>
+  <text class="faint" x="109" y="90" text-anchor="middle">Claude Code, Codex, …</text>
+
+  <rect class="box" x="254" y="36" width="190" height="76" rx="10"/>
+  <text class="title" x="349" y="68" text-anchor="middle">coplan CLI</text>
+  <text class="faint" x="349" y="90" text-anchor="middle">prints JSON + next_step</text>
+
+  <rect class="box" x="524" y="36" width="186" height="76" rx="10"/>
+  <text class="title" x="617" y="68" text-anchor="middle">Review server</text>
+  <text class="faint" x="617" y="90" text-anchor="middle">localhost · one per machine</text>
+
+  <rect class="you" x="796" y="36" width="140" height="76" rx="10"/>
+  <text class="title" x="866" y="68" text-anchor="middle">Review page</text>
+  <text class="faint" x="866" y="90" text-anchor="middle">you, in the browser</text>
+
+  <line class="line" x1="196" y1="74" x2="250" y2="74" marker-end="url(#a)"/>
+  <text class="label" x="223" y="64" text-anchor="middle">runs</text>
+  <line class="line" x1="448" y1="74" x2="520" y2="74" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text class="label" x="484" y="64" text-anchor="middle">HTTP</text>
+  <text class="faint" x="484" y="96" text-anchor="middle">poll · reply</text>
+  <line class="line-blue" x1="714" y1="74" x2="792" y2="74" marker-start="url(#ab)" marker-end="url(#ab)"/>
+  <text class="label" x="753" y="64" text-anchor="middle">HTTP + WS</text>
+
+  <!-- the shared engine -->
+  <rect class="engine" x="254" y="182" width="470" height="80" rx="10"/>
+  <text class="title" x="489" y="214" text-anchor="middle">Engine</text>
+  <text class="faint" x="489" y="237" text-anchor="middle">validate → derive the stage → render the page</text>
+  <line class="line-green" x1="349" y1="114" x2="349" y2="178" marker-end="url(#ag)"/>
+  <line class="line-green" x1="617" y1="114" x2="617" y2="178" marker-end="url(#ag)"/>
+  <text class="faint" x="483" y="152" text-anchor="middle">both use the same engine</text>
+
+  <!-- files on disk -->
+  <rect class="disk" x="24" y="324" width="190" height="66" rx="8"/>
+  <text class="mono" x="119" y="352" text-anchor="middle">plan.json</text>
+  <text class="faint" x="119" y="373" text-anchor="middle">written by the agent</text>
+
+  <rect class="disk" x="254" y="324" width="220" height="66" rx="8"/>
+  <text class="mono" x="364" y="352" text-anchor="middle">plan.review.json</text>
+  <text class="faint" x="364" y="373" text-anchor="middle">written only by the server</text>
+
+  <rect class="disk" x="504" y="324" width="220" height="66" rx="8"/>
+  <text class="mono" x="614" y="352" text-anchor="middle">plan.html</text>
+  <text class="faint" x="614" y="373" text-anchor="middle">rendered, works offline</text>
+
+  <rect class="disk" x="754" y="324" width="182" height="66" rx="8"/>
+  <text class="mono" x="845" y="352" text-anchor="middle">~/.coplan/</text>
+  <text class="faint" x="845" y="373" text-anchor="middle">sessions · server log</text>
+
+  <line class="line dash" x1="109" y1="114" x2="109" y2="320" marker-end="url(#a)"/>
+  <text class="label" x="117" y="222">edits</text>
+  <line class="line-green" x1="176" y1="322" x2="302" y2="266" marker-end="url(#ag)"/>
+  <text class="faint" x="218" y="284">reads</text>
+  <line class="line-green" x1="364" y1="322" x2="364" y2="266" marker-end="url(#ag)"/>
+  <line class="line-green" x1="614" y1="264" x2="614" y2="320" marker-end="url(#ag)"/>
+  <line class="line" x1="692" y1="114" x2="832" y2="320" marker-end="url(#a)"/>
+</svg>

@@ -1,0 +1,57 @@
+{
+  "name": "coplan",
+  "version": "0.1.0",
+  "description": "Structured, reviewable engineering plans: an agent writes plan.json, Coplan renders a tabbed HTML plan and runs the review loop.",
+  "keywords": [
+    "agent",
+    "skill",
+    "planning",
+    "code-review",
+    "claude-code",
+    "codex"
+  ],
+  "homepage": "https://github.com/mitchglenn/coplan#readme",
+  "bugs": "https://github.com/mitchglenn/coplan/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mitchglenn/coplan.git"
+  },
+  "license": "MIT",
+  "author": "Mitch Glenn",
+  "type": "module",
+  "bin": {
+    "coplan": "bin/coplan.js"
+  },
+  "files": [
+    "bin/coplan.js",
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "lint": "oxlint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
+    "build": "node scripts/build.ts",
+    "prepublishOnly": "npm run check && npm run build"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "amaro": "^1.2.1",
+    "marked": "^18.0.14",
+    "ws": "^8.21.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/ws": "^8.18.1",
+    "oxlint": "^1.86.0",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2"
+  }
+}

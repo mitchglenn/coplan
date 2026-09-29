@@ -1,0 +1,10 @@
+{
+  // Compiles the Node code to dist/ for the published package.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}

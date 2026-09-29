@@ -1,0 +1,11 @@
+{
+  "name": "coplan",
+  "owner": { "name": "Mitch Glenn" },
+  "plugins": [
+    {
+      "name": "coplan",
+      "source": "./",
+      "description": "Structured, reviewable engineering plans: your agent writes the plan, you review and approve it in the browser before any code is written."
+    }
+  ]
+}

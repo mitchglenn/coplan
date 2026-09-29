@@ -1,0 +1,15 @@
+{
+  // Type-checks the browser code: the review client and the tab script inlined into every page.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": [],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    // tabs.ts is a classic script inlined into the page, not a module: a file is a module only if
+    // it imports or exports, so the compiled tabs.js carries no `export {}`.
+    "moduleDetection": "legacy"
+  },
+  "include": ["src/client/**/*.ts", "src/render/tabs.ts"],
+  "exclude": []
+}

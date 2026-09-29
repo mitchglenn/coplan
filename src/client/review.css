@@ -1,0 +1,963 @@
+/* Review UI layered over a rendered plan. Uses the plan's own tokens. */
+
+:root {
+  --spr-panel-width: 380px;
+  --spr-shadow-float: 0 18px 48px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* --- targets --- */
+
+html.sp-review .sp-main [data-sp-target],
+html.sp-review .sp-summary[data-sp-target] {
+  border-radius: 8px;
+  transition: outline-color 120ms ease-out;
+}
+
+html.sp-review .sp-card[data-sp-target],
+html.sp-review .sp-item[data-sp-target],
+html.sp-review .sp-goal[data-sp-target] {
+  border-radius: var(--radius);
+}
+
+.spr-hover {
+  outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: 3px;
+}
+
+.spr-has-draft {
+  outline: 1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.spr-has-draft.spr-hover {
+  outline-style: solid;
+}
+
+.sp-seq-step.spr-hover,
+.sp-seq-step.spr-has-draft {
+  outline: none;
+}
+
+.sp-seq-step.spr-hover .sp-seq-hit {
+  fill: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.sp-seq-step.spr-has-draft .sp-seq-hit {
+  fill: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.spr-comment-button {
+  position: absolute;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font: 600 12.5px/1 var(--font);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.spr-comment-button[hidden] {
+  display: none;
+}
+
+.spr-comment-button svg {
+  display: block;
+}
+
+.spr-comment-button:hover {
+  background: color-mix(in srgb, var(--text) 86%, var(--bg));
+}
+
+/* --- comment card --- */
+
+.spr-card {
+  position: absolute;
+  z-index: 40;
+  width: min(440px, calc(100vw - 16px));
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--spr-shadow-float);
+  font-size: 14px;
+}
+
+.spr-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.spr-card-kicker {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.spr-card-target {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spr-quote {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  background: var(--accent-soft);
+  color: var(--text-2);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.spr-card-input,
+.spr-message,
+.sp-answer-note {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+  resize: vertical;
+}
+
+.spr-card-input:focus,
+.spr-message:focus,
+.sp-answer-note:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  outline-offset: 0;
+}
+
+.spr-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.spr-card-hint {
+  flex: 1;
+  min-width: 0;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+/* --- buttons --- */
+
+.spr-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: 600 13.5px/1 var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+.spr-button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.spr-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spr-button-primary {
+  border-color: var(--button);
+  background: var(--button);
+  color: var(--button-text);
+}
+
+.spr-button-primary:hover:not(:disabled) {
+  border-color: var(--button);
+  background: color-mix(in srgb, var(--button) 70%, #fff);
+}
+
+.spr-button-approve {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.spr-button-approve:hover:not(:disabled) {
+  border-color: var(--ok);
+}
+
+.spr-icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.spr-icon-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.spr-icon-button svg {
+  display: block;
+}
+
+.spr-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 500 12.5px/1.4 var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.spr-link-button:hover {
+  color: var(--high);
+}
+
+/* --- panel --- */
+
+.spr-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: var(--spr-panel-width);
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.spr-panel-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.spr-panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.spr-presence {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.spr-presence-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.spr-presence-listening {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
+.spr-presence-working {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: spr-pulse 1.6s ease-in-out infinite;
+}
+
+.spr-presence-away {
+  background: var(--medium);
+  box-shadow: 0 0 0 3px var(--medium-soft);
+}
+
+@keyframes spr-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.spr-panel-close {
+  display: none;
+}
+
+.spr-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.spr-stage-note {
+  margin: 0 0 14px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.spr-banner {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.spr-banner[hidden] {
+  display: none;
+}
+
+.spr-banner div + div {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.spr-banner-warn {
+  background: var(--medium-soft);
+  color: var(--medium);
+}
+
+.spr-banner-info {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* decisions progress */
+
+.spr-progress {
+  margin-bottom: 18px;
+}
+
+.spr-progress[hidden] {
+  display: none;
+}
+
+.spr-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.spr-progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms ease-out;
+}
+
+.spr-progress-text {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+/* conversation */
+
+.spr-history {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.spr-history[hidden] {
+  display: none;
+}
+
+.spr-bubble {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.spr-bubble-who {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.spr-bubble-you {
+  margin-left: 28px;
+  background: var(--accent-soft);
+}
+
+.spr-bubble-agent {
+  margin-right: 28px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.spr-bubble-body p {
+  margin: 0 0 6px;
+}
+
+.spr-bubble-items {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-2);
+}
+
+.spr-bubble-items li {
+  overflow-wrap: anywhere;
+}
+
+.spr-bubble-items li + li {
+  margin-top: 3px;
+}
+
+.spr-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ok);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.spr-event::before,
+.spr-event::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--ok) 30%, transparent);
+}
+
+/* drafts */
+
+.spr-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.spr-draft-count:not(:empty) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.spr-drafts,
+.spr-history {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.spr-drafts {
+  display: grid;
+  gap: 8px;
+}
+
+.spr-draft {
+  min-width: 0;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.spr-draft-orphan {
+  border-style: dashed;
+}
+
+.spr-draft-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: -2px -2px 4px 0;
+}
+
+.spr-draft-target {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: 600 12.5px/1.5 var(--font);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.spr-draft-target:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.spr-draft-orphan .spr-draft-target {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
+
+.spr-draft .spr-quote {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+
+.spr-draft-text {
+  margin: 0;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.spr-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* composer */
+
+.spr-composer {
+  flex: none;
+  padding: 14px 18px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.spr-message {
+  min-height: 64px;
+}
+
+.spr-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.spr-actions .spr-button-primary {
+  flex: 1;
+}
+
+.spr-actions .spr-button[hidden],
+.spr-composer .spr-message[hidden],
+.spr-actions[hidden],
+.spr-next[hidden] {
+  display: none;
+}
+
+/* Approving the plan: slice it first, or build now. */
+.spr-next {
+  display: grid;
+  gap: 8px;
+}
+
+.spr-next .spr-section-head {
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.spr-next-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-2);
+  font: 400 12.5px/1.45 var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.spr-next-option strong {
+  color: var(--ok);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.spr-next-option:hover:not(:disabled),
+.spr-next-option:focus-visible {
+  border-color: color-mix(in srgb, var(--ok) 60%, transparent);
+  background: var(--ok-soft);
+  outline: none;
+}
+
+.spr-next-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spr-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.spr-hint[hidden] {
+  display: none;
+}
+
+.spr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 20px;
+  margin-top: 10px;
+}
+
+.spr-foot .spr-link-button[hidden] {
+  display: none;
+}
+
+.spr-status {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.spr-status-ok {
+  color: var(--ok);
+}
+
+.spr-status-error {
+  color: var(--high);
+}
+
+.spr-composer[hidden],
+.spr-closing[hidden],
+.spr-stage-note[hidden],
+.spr-draft-section[hidden] {
+  display: none;
+}
+
+.spr-closing {
+  display: grid;
+  flex: none;
+  gap: 3px;
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.spr-closing strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.spr-closing-approved strong {
+  color: var(--ok);
+}
+
+/* --- questions in review mode --- */
+
+html.sp-review .sp-option:has(input:not(:disabled)) {
+  cursor: pointer;
+}
+
+html.sp-review .sp-option:has(input:not(:disabled)):hover {
+  border-color: var(--border-strong);
+}
+
+html.sp-review .sp-option:has(input:not(:disabled)):hover input:not(:checked) {
+  border-color: var(--muted);
+}
+
+.sp-answer {
+  margin-top: 10px;
+}
+
+.sp-answer[hidden] {
+  display: none;
+}
+
+.sp-answer-note {
+  min-height: 60px;
+}
+
+.sp-answer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sp-answer-status {
+  flex: 1;
+  color: var(--ok);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.sp-answer-status.spr-incomplete {
+  color: var(--medium);
+}
+
+.sp-button-quiet {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 500 12.5px/1.4 var(--font);
+  cursor: pointer;
+}
+
+.sp-button-quiet:hover {
+  color: var(--text);
+}
+
+.spr-answered {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* --- skipping edge cases, risks and gaps --- */
+
+/* The title hugs its text so Skip sits beside it, and the header keeps the top-right corner clear
+   for the hover Comment button. */
+html.sp-review .sp-skippable .sp-item-head {
+  align-items: center;
+  padding-right: 104px;
+}
+
+html.sp-review .sp-skippable .sp-item-title {
+  flex: 0 1 auto;
+}
+
+.spr-skip-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: 600 12.5px/1 var(--font);
+  cursor: pointer;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 120ms ease-out,
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.spr-skip-icon,
+.spr-skip-icon svg {
+  display: block;
+}
+
+/* Revealed on hover or keyboard focus. It keeps its space while hidden so nothing shifts. */
+.sp-skippable:hover .spr-skip-button,
+.spr-skip-button:focus-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .spr-skip-button {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.spr-skip-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.spr-skip-button:active {
+  opacity: 0.85;
+}
+
+.spr-skip-button[hidden],
+.sp-skip-pill[hidden],
+.sp-count-skipped[hidden] {
+  display: none;
+}
+
+/* --- ended --- */
+
+html.spr-ended .spr-comment-button {
+  display: none;
+}
+
+/* --- floating review button (narrow screens) --- */
+
+.spr-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 45;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: 600 14px/1 var(--font);
+  box-shadow: var(--spr-shadow-float);
+  cursor: pointer;
+}
+
+.spr-fab svg {
+  display: block;
+}
+
+.spr-fab-count:not(:empty) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 11.5px;
+}
+
+.spr-scrim {
+  display: none;
+}
+
+/* --- layout --- */
+
+@media (min-width: 1180px) {
+  html.sp-review body {
+    padding-right: var(--spr-panel-width);
+  }
+}
+
+@media (max-width: 1179.98px) {
+  .spr-panel {
+    width: min(420px, 100vw);
+    box-shadow: var(--spr-shadow-float);
+    transform: translateX(105%);
+    transition: transform 180ms ease-out;
+    visibility: hidden;
+  }
+
+  html.spr-panel-open .spr-panel {
+    transform: none;
+    visibility: visible;
+  }
+
+  .spr-panel-close {
+    display: inline-grid;
+  }
+
+  .spr-fab {
+    display: inline-flex;
+  }
+
+  html.spr-panel-open .spr-fab {
+    display: none;
+  }
+
+  html.spr-panel-open .spr-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    display: block;
+    background: rgba(0, 0, 0, 0.55);
+  }
+}
+
+@media print {
+  .spr-panel,
+  .spr-fab,
+  .spr-comment-button,
+  .spr-card {
+    display: none !important;
+  }
+
+  html.sp-review body {
+    padding-right: 0;
+  }
+}
