@@ -2,7 +2,7 @@
 
 Plan your next feature with a rich HTML planning experience.
 
-<!-- Demo video: in GitHub's editor, drag the video file onto this line to upload it, then delete this comment. -->
+https://github.com/user-attachments/assets/0d469189-1530-4830-93c8-8cf0da82f183
 
 ## Install
 
