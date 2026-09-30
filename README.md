@@ -51,7 +51,7 @@ From there:
    Hover anything to comment, select text to quote it, skip edge cases that do not matter, and answer the agent's open questions, then send.
    The agent revises the plan, and the page updates by itself.
 5. **You approve, and choose what comes next.**
-   Have the agent break the plan into vertical slices and tasks for one more review, or skip that and let it build now.
+   Have the agent break the plan into vertical slices and tasks that can be synced to systems like Jira, or skip that and build it now.
 
 While you review, the agent waits for you: the review page is the conversation until you approve or end the review.
 Plans live in your project under `.coplan/<name>/`.
