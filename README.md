@@ -2,7 +2,7 @@
 
 Plan your next feature with a rich HTML planning experience.
 
-https://github.com/user-attachments/assets/0d469189-1530-4830-93c8-8cf0da82f183
+https://github.com/user-attachments/assets/08814787-b65d-4b88-99ff-d54cb64eeee0
 
 ## Install
 
