@@ -330,12 +330,6 @@ function checkSlices(report: Report, plan: Plan, slices: Slice[], claim: (id: st
         else if (!taskIds.has(dependency)) report.error(path, `unknown task ${JSON.stringify(dependency)}`);
       });
     });
-    if (slice.layers.length === 1) {
-      report.warn(
-        `slices[${i}].layers`,
-        "touches a single layer, so it is a horizontal slice. A vertical slice cuts through every layer a user-visible behaviour needs",
-      );
-    }
     if (!slice.demo && !plan.lightweight) report.error(`slices[${i}].demo`, "is required");
     const maxTasks = plan.lightweight ? LIGHTWEIGHT.tasksMax : 8;
     if (slice.tasks.length > maxTasks) {

@@ -85,7 +85,7 @@ test("placeholders left by `coplan new` are errors", () => {
   assert.deepEqual(paths(result), ["tabs[0].goals[0].detail"]);
 });
 
-test("slices: references, cycles and horizontal-slice warnings", () => {
+test("slices: references and cycles", () => {
   const plan = examplePlan();
   plan.slices = structuredClone(SLICES);
   assert.equal(validatePlan(plan).ok, true);
@@ -100,10 +100,6 @@ test("slices: references, cycles and horizontal-slice warnings", () => {
 
   plan.slices[0].depends_on = ["S9"];
   assert.deepEqual(paths(validatePlan(plan)), ["slices[0].depends_on[0]"]);
-
-  plan.slices[0].depends_on = [];
-  plan.slices[2].layers = ["db"];
-  assert.ok(validatePlan(plan).warnings.some((w) => w.path === "slices[2].layers"));
 });
 
 test("reserved tab ids and a second tab of one kind are refused", () => {

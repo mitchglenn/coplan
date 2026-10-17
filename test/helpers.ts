@@ -40,7 +40,6 @@ export const SLICES = [
     title: "Thinnest invite",
     goal: "An admin invites and the invitee joins.",
     demo: "Invite, accept, land in the workspace.",
-    layers: ["db", "api", "ui"],
     acceptance: ["Membership exists with the invited role"],
     tasks: [
       { id: "S1.T1", title: "Table", layer: "db", size: "S" },
@@ -52,7 +51,6 @@ export const SLICES = [
     title: "Revoke",
     goal: "Admins revoke pending invites.",
     demo: "Revoke and watch the link die.",
-    layers: ["api", "ui"],
     depends_on: ["S1"],
     acceptance: ["Revoked links refuse"],
     tasks: [{ id: "S2.T1", title: "Revoke endpoint" }],
@@ -62,7 +60,6 @@ export const SLICES = [
     title: "Guard rails",
     goal: "Seats and expiry.",
     demo: "Fill the workspace and try again.",
-    layers: ["db", "api"],
     depends_on: ["S1"],
     acceptance: ["Seats are reserved"],
     tasks: [{ id: "S3.T1", title: "Seat reservation" }],

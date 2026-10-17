@@ -225,7 +225,6 @@ const slice = z.strictObject({
   goal: markdown,
   /** Required unless the plan is lightweight; validation checks it, since the schema cannot see the plan. */
   demo: markdown.optional(),
-  layers: optionalList(label, 8),
   depends_on: optionalList(id, 20),
   acceptance: list(markdown, { min: 1, max: 12 }),
   tasks: list(task, { min: 1, max: 20 }),

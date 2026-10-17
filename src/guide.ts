@@ -175,14 +175,14 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "Add slices only after the reviewer approved the plan and chose to slice it; a plan approved to build now takes no slices. Do not edit the approved plan while slicing - that re-opens its review.",
       "Each slice has a goal (what someone can do afterwards), a demo (how a reviewer sees it working), acceptance criteria, and 1-8 tasks.",
       "The first slice is the thinnest path through the whole system, even if it is ugly. Later slices widen it: validation, edge cases, permissions, polish.",
-      "A slice that touches one layer is horizontal. Coplan warns on it; either merge it into the slice that needs it or justify it (a migration that must ship first, say).",
+      "A slice with nothing to demo is horizontal: it lays groundwork, such as tables or endpoints nothing calls yet, for a later slice. Merge it into the slice that first needs it, or justify it (a migration that must ship first, say).",
       "Map the plan onto the slices: every flow, edge case and security mitigation you intend to build should land in some slice's acceptance or tasks. Edge cases, risks and gaps the reviewer skipped (the poll's `skipped` list) need no work at all. What does not land is out of scope or a gap - say which.",
       "depends_on between slices defines phases; slices in one phase can be built in parallel. Keep the graph shallow.",
       "Tasks name the files they touch when you know them, a layer, and a relative size S/M/L. A task is something one engineer finishes in a sitting or two.",
     ],
     shape: {
       slices:
-        "[{ id: 'S1', title, goal, demo, layers?: ['db','api','ui'], depends_on?: [slice ids], acceptance: [Markdown], tasks: [{ id: 'S1.T1', title, detail?, layer?, size?: S|M|L, files?: [path], depends_on?: [task ids] }], notes? }]",
+        "[{ id: 'S1', title, goal, demo, depends_on?: [slice ids], acceptance: [Markdown], tasks: [{ id: 'S1.T1', title, detail?, layer?, size?: S|M|L, files?: [path], depends_on?: [task ids] }], notes? }]",
     },
   }),
 
@@ -226,7 +226,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
     slices: [
       "Only after the reviewer approves the plan and chooses to slice it, and without editing the approved plan.",
       `Write 2-${LIGHTWEIGHT.slicesMax} vertical slices. The first is the thinnest path through the whole feature; later ones widen it.`,
-      `Each has a goal, 1-3 acceptance criteria and 1-${LIGHTWEIGHT.tasksMax} tasks. \`demo\`, \`layers\`, task sizes and files are optional; add them only when they say something the goal does not.`,
+      `Each has a goal, 1-3 acceptance criteria and 1-${LIGHTWEIGHT.tasksMax} tasks. \`demo\`, task sizes and files are optional; add them only when they say something the goal does not.`,
       "depends_on between slices defines phases; keep it to what truly has to come first.",
     ],
     shape: {
@@ -240,7 +240,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
         edge_cases: TAB_SHAPES.edge_cases,
       },
       question: QUESTION_SHAPE,
-      slices: `[{ id: 'S1', title, goal, acceptance: [Markdown] (1-3), tasks: [{ id: 'S1.T1', title, detail? }] (1-${LIGHTWEIGHT.tasksMax}), depends_on?: [slice ids], demo?, layers? }]`,
+      slices: `[{ id: 'S1', title, goal, acceptance: [Markdown] (1-3), tasks: [{ id: 'S1.T1', title, detail? }] (1-${LIGHTWEIGHT.tasksMax}), depends_on?: [slice ids], demo? }]`,
       ids: "Short, with a prefix, one namespace across the plan: D decisions, F flows, E edge cases, Q questions, S slices, S1.T1 tasks.",
       everything_else: "Every other tab kind and field: `coplan guide tabs`.",
     },

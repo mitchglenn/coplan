@@ -161,7 +161,7 @@ test("sequence notes do not take a step number", () => {
 const approvedSlices = { stage: "approved", phase: null, slicesApproved: true } as const;
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 16, 12, minute)).toISOString();
 
-test("a slice under review shows its tasks without file lists, and its card without layer badges", () => {
+test("a slice under review lists its tasks without their files", () => {
   const slices: any[] = structuredClone(SLICES);
   slices[0].tasks[0].files = ["db/migrate/add_invites.rb"];
   const html = render(
@@ -171,7 +171,6 @@ test("a slice under review shows its tasks without file lists, and its card with
   const card = /<article class="sp-card sp-slice" id="slice-S1".*?<\/article>/s.exec(html)?.[0] ?? "";
   assert.match(card, /<li class="sp-task"[^>]*data-sp-id="S1.T1">/);
   assert.doesNotMatch(card, /add_invites\.rb|class="sp-refs"/, "tasks list no files");
-  assert.doesNotMatch(card, /class="sp-layers"/, "the slice shows no layer badges");
   assert.match(card, /<span class="sp-layer">db<\/span>/, "a task still shows its own layer");
   assert.doesNotMatch(html, /class="sp-build"|class="sp-node/, "no progress before the slices are approved");
 });
