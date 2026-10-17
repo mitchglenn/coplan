@@ -274,7 +274,12 @@ export type ServerMessage =
 
 /** The plan state a poll reports alongside feedback: what the CLI needs to write its next step. */
 export type PollStage =
-  | { stage: Stage["stage"]; slices_skipped: boolean; skipped: { id: string; title: string | null }[] }
+  | {
+      stage: Stage["stage"];
+      lightweight: boolean;
+      slices_skipped: boolean;
+      skipped: { id: string; title: string | null }[];
+    }
   | { stage: "invalid"; errors: { path: string; message: string }[] };
 
 /** What `coplan poll` sends: the plan, and how long to wait before answering `waiting`. */

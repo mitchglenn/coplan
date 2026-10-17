@@ -8,8 +8,9 @@ import { join, resolve } from "node:path";
 import { renderToDisk } from "../engine.ts";
 import { buildProgress } from "../plan/build.ts";
 import { hasSlices } from "../plan/stage.ts";
-import { DESCRIPTION, guideTopic, guideTopics, HOW_TO_POLL, RULES, WORKFLOW } from "../guide.ts";
+import { DESCRIPTION, guideTopic, guideTopics, HOW_TO_POLL, LIGHTWEIGHT_WORKFLOW, RULES, WORKFLOW } from "../guide.ts";
 import { APP, buildId, serverPort, stateDir } from "../paths.ts";
+import { DECISIONS_MAX, DECISIONS_MIN, LIGHTWEIGHT } from "../plan/schema.ts";
 import { PLACEHOLDER } from "../plan/validate.ts";
 import type { BuildSummary, TaskResponse, TaskUpdate } from "../protocol.ts";
 import { readReview } from "../review-store.ts";
@@ -30,12 +31,14 @@ export async function home(): Promise<Output> {
   return {
     description: DESCRIPTION,
     workflow: WORKFLOW,
+    lightweight: LIGHTWEIGHT_WORKFLOW,
     rules: RULES,
     ...(openReviews.length ? { open_reviews: openReviews } : {}),
     commands: {
       "coplan setup [--remove]": "Install the skill for Claude Code, Codex and other agents on this machine",
-      "coplan guide [topic]": "Guidance: workflow, decisions, plan, tabs, slices, build",
-      "coplan new <slug> [--title <title>] [--dir <dir>]": "Scaffold .coplan/<slug>/plan.json",
+      "coplan guide [topic]": "Guidance: workflow, decisions, plan, tabs, slices, build, lightweight",
+      "coplan new <slug> [--title <title>] [--dir <dir>] [--lightweight]":
+        "Scaffold .coplan/<slug>/plan.json; --lightweight for a plan reviewed in minutes",
       "coplan render <plan.json>":
         "Validate and write the portable plan.html; reports errors, warnings and reading time",
       "coplan open <plan.json> [--no-open] [--reopen]": "Start or resume the review in the browser",
@@ -58,7 +61,10 @@ export function guide(args: string[]): Output {
   return body;
 }
 
-/** Scaffolds a plan with only a title, summary and one example decision, full of placeholders. */
+/**
+ * Scaffolds a plan with only a title, summary and one example decision, full of placeholders.
+ * `--lightweight` marks the plan lightweight, which scales every later step down.
+ */
 export async function newPlan(args: string[]): Promise<Output> {
   const { positional, flags } = parseArgs(args, ["title", "dir"]);
   const slug = positional[0];
@@ -71,12 +77,17 @@ export async function newPlan(args: string[]): Promise<Output> {
   const file = join(dir, "plan.json");
   if (existsSync(file)) throw new CliError(`${display(file)} already exists`, ["Edit it, then run `coplan render`"]);
   await mkdir(dir, { recursive: true });
+  const lightweight = flags.lightweight === true;
   const todo = (text: string) => `${PLACEHOLDER} ${text}`;
   const skeleton = {
     version: 1,
     title: typeof flags.title === "string" ? flags.title : todo("feature title"),
-    summary: todo("one short paragraph: who can do what after this ships, and why it matters"),
-    budget: "standard",
+    summary: todo(
+      lightweight
+        ? "two or three sentences: who can do what after this ships"
+        : "one short paragraph: who can do what after this ships, and why it matters",
+    ),
+    ...(lightweight ? { lightweight: true } : { budget: "standard" }),
     decisions: [
       {
         id: "D1",
@@ -93,9 +104,13 @@ export async function newPlan(args: string[]): Promise<Output> {
     questions: [],
   };
   await writeFile(file, `${JSON.stringify(skeleton, null, 2)}\n`);
+  const [topic, count] = lightweight
+    ? ["lightweight", `${LIGHTWEIGHT.decisionsMin}-${LIGHTWEIGHT.decisionsMax}`]
+    : ["decisions", `${DECISIONS_MIN}-${DECISIONS_MAX}`];
   return {
     created: display(file),
-    next_step: `Read \`coplan guide decisions\`, then replace the "${PLACEHOLDER}" values in ${display(file)} and write 8-12 key decisions, most impactful first. Do not write the plan yet - it comes after the reviewer answers. Run \`coplan render ${display(file)}\`, then \`coplan open ${display(file)}\`.`,
+    ...(lightweight ? { lightweight: true } : {}),
+    next_step: `Read \`coplan guide ${topic}\`, then replace the "${PLACEHOLDER}" values in ${display(file)} and write ${count} key decisions, most impactful first. Do not write the plan yet - it comes after the reviewer answers. Run \`coplan render ${display(file)}\`, then \`coplan open ${display(file)}\`.`,
   };
 }
 

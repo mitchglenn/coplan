@@ -206,6 +206,16 @@ function stamps(stage: Stage): Html[] {
 }
 
 function readingLabel(plan: Plan, stage: Stage, reading: ReadingTime, answers: Record<string, DecisionAnswer>): string {
+  const label = progressLabel(plan, stage, reading, answers);
+  return plan.lightweight ? `Lightweight · ${label}` : label;
+}
+
+function progressLabel(
+  plan: Plan,
+  stage: Stage,
+  reading: ReadingTime,
+  answers: Record<string, DecisionAnswer>,
+): string {
   if (stage.stage === "decisions") return `${plan.decisions.length} decisions · all optional`;
   if (stage.stage === "drafting") {
     const answered = plan.decisions.filter((d) => isAnswered(answers[d.id])).length;

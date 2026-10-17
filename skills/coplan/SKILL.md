@@ -20,6 +20,7 @@ Get them from the CLI, which is the single source of truth:
 - `coplan guide plan` and `coplan guide tabs` once the decisions are answered
 - `coplan guide slices` after the reviewer approves the plan
 - `coplan guide build` once the slices are approved and the user asks you to build
+- `coplan guide lightweight` instead of all of these when the user asks for a lightweight or quick plan, scaffolded with `coplan new <slug> --lightweight`
 
 Every command prints a `next_step`; follow it.
 If the `coplan` command is not found, stop and ask the user to install Coplan: https://github.com/mitchglenn/coplan#install

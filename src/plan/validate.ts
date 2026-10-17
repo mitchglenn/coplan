@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   DECISIONS_MAX,
   DECISIONS_MIN,
+  LIGHTWEIGHT,
   planSchema,
   RESERVED_TAB_IDS,
   type Flow,
@@ -185,7 +186,7 @@ function checkReferences(report: Report, plan: Plan) {
     }
   });
 
-  if (plan.slices) checkSlices(report, plan.slices, claim);
+  if (plan.slices) checkSlices(report, plan, plan.slices, claim);
 }
 
 function checkTabs(report: Report, plan: Plan, claim: (id: string, path: string) => void) {
@@ -218,7 +219,8 @@ function checkTabs(report: Report, plan: Plan, claim: (id: string, path: string)
   } else if (overview !== "tabs[0]") {
     report.warn(overview, "put the overview tab first; the reviewer reads it before anything else");
   }
-  if (!kinds.has("gaps")) {
+  // A lightweight plan names what it set aside in out_of_scope instead.
+  if (!kinds.has("gaps") && !plan.lightweight) {
     report.warn(
       "tabs",
       "no gaps tab: list what the plan does not cover yet. A plan with no gaps is one nobody believes",
@@ -247,10 +249,16 @@ function recordsOf(tab: Tab): { field: string; list: { id?: string }[] } | null 
 }
 
 function checkDecisions(report: Report, plan: Plan, claim: (id: string, path: string) => void) {
-  if (plan.decisions.length < DECISIONS_MIN) {
+  const count = plan.decisions.length;
+  if (plan.lightweight && (count < LIGHTWEIGHT.decisionsMin || count > LIGHTWEIGHT.decisionsMax)) {
     report.warn(
       "decisions",
-      `has ${plan.decisions.length}; aim for ${DECISIONS_MIN}-${DECISIONS_MAX} so the plan starts from real requirements rather than guesses`,
+      `has ${count}; a lightweight plan asks ${LIGHTWEIGHT.decisionsMin}-${LIGHTWEIGHT.decisionsMax}, only the calls that would change the plan`,
+    );
+  } else if (!plan.lightweight && count < DECISIONS_MIN) {
+    report.warn(
+      "decisions",
+      `has ${count}; aim for ${DECISIONS_MIN}-${DECISIONS_MAX} so the plan starts from real requirements rather than guesses`,
     );
   }
   plan.decisions.forEach((decision, i) => {
@@ -297,7 +305,7 @@ function checkFlow(report: Report, flow: Flow, path: string) {
   });
 }
 
-function checkSlices(report: Report, slices: Slice[], claim: (id: string, path: string) => void) {
+function checkSlices(report: Report, plan: Plan, slices: Slice[], claim: (id: string, path: string) => void) {
   const sliceIds = new Set<string>();
   const taskIds = new Set<string>();
   slices.forEach((slice, i) => {
@@ -328,10 +336,18 @@ function checkSlices(report: Report, slices: Slice[], claim: (id: string, path: 
         "touches a single layer, so it is a horizontal slice. A vertical slice cuts through every layer a user-visible behaviour needs",
       );
     }
-    if (slice.tasks.length > 8) {
+    if (!slice.demo && !plan.lightweight) report.error(`slices[${i}].demo`, "is required");
+    const maxTasks = plan.lightweight ? LIGHTWEIGHT.tasksMax : 8;
+    if (slice.tasks.length > maxTasks) {
       report.warn(`slices[${i}].tasks`, `has ${slice.tasks.length} tasks; a slice this large usually hides two slices`);
     }
   });
+  if (plan.lightweight && slices.length > LIGHTWEIGHT.slicesMax) {
+    report.warn(
+      "slices",
+      `has ${slices.length}; a lightweight plan takes ${LIGHTWEIGHT.slicesMax} slices at most. Merge the later ones`,
+    );
+  }
 
   const sliceCycle = findCycle(slices.map((slice) => [slice.id, slice.depends_on.filter((d) => sliceIds.has(d))]));
   if (sliceCycle) report.error("slices", `dependency cycle: ${sliceCycle.join(" -> ")}`);

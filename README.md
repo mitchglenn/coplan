@@ -58,6 +58,20 @@ From there:
    You review each task in chat before it is committed.
 
 While you review, the agent waits for you: the review page is the conversation until you approve or end the review.
+
+### Lightweight plans
+
+When time is short, as in a pairing session or a job interview, ask for a lightweight plan:
+
+> Add team invites, use coplan lightweight.
+
+It steps through the same checkpoints, each cut down so the whole review takes about five minutes:
+
+- **3-5 key decisions** instead of 8-12.
+- **A plan that reads in 3 minutes:** a short overview, the main flow, and the edge cases that matter, with security risks folded in.
+- **2-4 light slices** if you choose to slice, each a goal, a few acceptance criteria and up to 4 tasks.
+
+The agent reads the codebase as thoroughly as for any plan, and one guide covers every step.
 Plans live in your project under `.coplan/<name>/`.
 Commit them to keep each plan and its approvals next to the code, or add `.coplan/` to `.gitignore`.
 
@@ -120,19 +134,19 @@ A task's status comes from those reports and from what it depends on: waiting, r
 
 ### CLI
 
-| Command                                   | What it does                                                                  |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `coplan`                                  | Workflow, rules, commands and open reviews                                    |
-| `coplan setup`                            | Install the skill for the agents on this machine (`--remove` to take it out)  |
-| `coplan guide [topic]`                    | Guidance: `workflow`, `decisions`, `plan`, `tabs`, `slices`, `build`          |
-| `coplan new <slug>`                       | Scaffold `.coplan/<slug>/plan.json` with a first decision to fill in          |
-| `coplan render <plan.json>`               | Validate, write `plan.html`, report errors, warnings and reading time         |
-| `coplan open <plan.json>`                 | Render, start the server if needed, open the review (`--no-open`, `--reopen`) |
-| `coplan poll <plan.json>`                 | Wait up to 8 minutes for feedback, else answer `waiting`                      |
-| `coplan status <plan.json>`               | Stage, approvals, undelivered feedback, and where the build stands            |
-| `coplan task <action> <plan.json> <task>` | Report a step of the build: `start`, `built`, `commit` or `link`              |
-| `coplan end <plan.json>`                  | End the review as the agent                                                   |
-| `coplan stop`                             | Stop the background server                                                    |
+| Command                                   | What it does                                                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `coplan`                                  | Workflow, rules, commands and open reviews                                                                |
+| `coplan setup`                            | Install the skill for the agents on this machine (`--remove` to take it out)                              |
+| `coplan guide [topic]`                    | Guidance: `workflow`, `decisions`, `plan`, `tabs`, `slices`, `build`, `lightweight`                       |
+| `coplan new <slug>`                       | Scaffold `.coplan/<slug>/plan.json` with a first decision to fill in (`--lightweight` for a quick review) |
+| `coplan render <plan.json>`               | Validate, write `plan.html`, report errors, warnings and reading time                                     |
+| `coplan open <plan.json>`                 | Render, start the server if needed, open the review (`--no-open`, `--reopen`)                             |
+| `coplan poll <plan.json>`                 | Wait up to 8 minutes for feedback, else answer `waiting`                                                  |
+| `coplan status <plan.json>`               | Stage, approvals, undelivered feedback, and where the build stands                                        |
+| `coplan task <action> <plan.json> <task>` | Report a step of the build: `start`, `built`, `commit` or `link`                                          |
+| `coplan end <plan.json>`                  | End the review as the agent                                                                               |
+| `coplan stop`                             | Stop the background server                                                                                |
 
 `coplan poll` also takes `--reply <text>` or `--reply-file <path or ->` to answer the reviewer first, and `--timeout <seconds>` to wait less.
 

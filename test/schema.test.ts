@@ -39,6 +39,45 @@ test("a plan needs an overview tab and warns without gaps", () => {
   assert.ok(result.warnings.some((w) => /gaps/.test(w.message)));
 });
 
+test("a lightweight plan asks 3-5 decisions, needs no gaps tab, and keeps its slices light", () => {
+  const plan = examplePlan();
+  plan.lightweight = true;
+  plan.tabs = plan.tabs.filter((t: { kind: string }) => t.kind !== "gaps");
+  let result = validatePlan(plan);
+  assert.deepEqual(
+    result.warnings.map((w) => w.path),
+    ["decisions"],
+    "ten decisions are too many, and no gaps tab is fine",
+  );
+  assert.match(result.warnings[0].message, /has 10; a lightweight plan asks 3-5/);
+
+  plan.decisions = plan.decisions.slice(0, 4);
+  plan.slices = structuredClone(SLICES).map(({ demo: _demo, ...slice }) => slice);
+  result = validatePlan(plan);
+  assert.deepEqual(result.errors, [], "a lightweight slice needs no demo");
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(paths(validatePlan({ ...plan, lightweight: undefined })), [
+    "slices[0].demo",
+    "slices[1].demo",
+    "slices[2].demo",
+  ]);
+
+  plan.slices.push(
+    ...[4, 5].map((n) => ({
+      id: `S${n}`,
+      title: "More",
+      goal: "More.",
+      acceptance: ["More"],
+      tasks: [{ id: `S${n}.T1`, title: "More" }],
+    })),
+  );
+  plan.slices[0].tasks.push(...[3, 4, 5].map((n) => ({ id: `S1.T${n}`, title: "More" })));
+  assert.deepEqual(
+    validatePlan(plan).warnings.map((w) => w.path),
+    ["slices[0].tasks", "slices"],
+  );
+});
+
 test("placeholders left by `coplan new` are errors", () => {
   const plan = examplePlan();
   plan.tabs[0].goals[0].detail = "TODO: one sentence";

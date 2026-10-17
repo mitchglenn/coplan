@@ -205,6 +205,7 @@ function pollStage(loaded: LoadResult): PollStage {
   const titles = new Map((loaded.plan.tabs ?? []).flatMap(skippableRecords).map((record) => [record.id, record.title]));
   return {
     stage: loaded.stage.stage,
+    lightweight: Boolean(loaded.plan.lightweight),
     slices_skipped: loaded.stage.slicesSkipped,
     skipped: Object.keys(loaded.review.skips).map((id) => ({ id, title: titles.get(id) ?? null })),
   };

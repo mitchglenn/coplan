@@ -102,6 +102,48 @@ test("a poll with nothing to hand over returns in time and tells the agent to po
   assert.match(result.next_step, /Run `coplan poll \.coplan\/demo\/plan\.json` again now/);
 });
 
+test("a lightweight plan is scaffolded small, and its next steps point at the lightweight guide", async () => {
+  const project = join(home, "project");
+  await mkdir(project, { recursive: true });
+  const run = async (...args: string[]) =>
+    JSON.parse((await promisify(execFile)(process.execPath, [BIN, ...args], { cwd: project, env })).stdout);
+
+  const created = await run("new", "quick-invites", "--lightweight", "--title", "Quick invites");
+  assert.match(created.next_step, /Read `coplan guide lightweight`.* write 3-5 key decisions/);
+  const plan = ".coplan/quick-invites/plan.json";
+  const scaffold = JSON.parse(await readFile(join(project, plan), "utf8"));
+  assert.equal(scaffold.lightweight, true);
+  assert.equal("budget" in scaffold, false, "a lightweight plan has its own budget");
+
+  const guide = await coplan("guide", "lightweight");
+  assert.deepEqual(Object.keys(guide), ["purpose", "codebase", "decisions", "plan", "slices", "shape"]);
+
+  const written = {
+    ...scaffold,
+    summary: "Admins invite teammates by email.",
+    decisions: decisionsOnlyPlan().decisions.slice(0, 4),
+  };
+  await writeFile(join(project, plan), JSON.stringify(written));
+  const opened = await run("open", plan);
+  assert.equal(opened.ok, true);
+  assert.equal(opened.warnings, undefined);
+
+  // The reviewer submits the decisions from the page, answering none of them.
+  const { origin, pathname } = new URL(opened.url);
+  const key = pathname.split("/").pop();
+  const submitted = await fetch(`${origin}/api/${key}/decisions`, {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ hash: decisionsHash(validPlan(written)), answers: {}, items: [] }),
+  });
+  assert.equal(submitted.status, 200);
+
+  const polled = await run("poll", plan, "--timeout", "5");
+  assert.equal(polled.status, "feedback");
+  assert.match(polled.next_step, /Now write the lightweight plan `coplan guide lightweight` describes/);
+  assert.doesNotMatch(polled.next_step, /guide plan/);
+});
+
 test("building approved slices: each `coplan task` report says what to do next, and status shows the build", async () => {
   const project = join(home, "builder");
   const dir = join(project, ".coplan/invites");

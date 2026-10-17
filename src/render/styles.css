@@ -1695,6 +1695,11 @@ li code {
   font-size: 14.5px;
 }
 
+/* A slice without a demo (lightweight plans) keeps the demo's gap below the goal. */
+.sp-slice-goal + .sp-slice-tasks {
+  margin-top: 16px;
+}
+
 .sp-slice-acceptance {
   margin-top: 18px;
   padding-top: 14px;

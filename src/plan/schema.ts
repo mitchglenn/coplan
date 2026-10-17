@@ -11,6 +11,11 @@ export const PLAN_VERSION = 1;
 export const BUDGET_MINUTES = { small: 5, standard: 10, large: 15 } as const;
 export const DECISIONS_MIN = 8;
 export const DECISIONS_MAX = 12;
+/**
+ * A lightweight plan keeps every checkpoint but shrinks each one, for when the whole review has to
+ * fit in a few minutes. These limits drive its warnings and the guidance that promises them.
+ */
+export const LIGHTWEIGHT = { decisionsMin: 3, decisionsMax: 5, minutes: 3, slicesMax: 4, tasksMax: 4 } as const;
 /** Tabs the engine adds itself, so a plan may not claim their ids. */
 export const RESERVED_TAB_IDS = ["questions", "slices"] as const;
 
@@ -218,7 +223,8 @@ const slice = z.strictObject({
   id,
   title: label,
   goal: markdown,
-  demo: markdown,
+  /** Required unless the plan is lightweight; validation checks it, since the schema cannot see the plan. */
+  demo: markdown.optional(),
   layers: optionalList(label, 8),
   depends_on: optionalList(id, 20),
   acceptance: list(markdown, { min: 1, max: 12 }),
@@ -234,6 +240,8 @@ export const planSchema = z.strictObject({
   title: label,
   summary: markdown,
   budget: z.enum(["small", "standard", "large"]).default("standard"),
+  // No default: a defaulted field would change every existing plan's hash and void its approvals.
+  lightweight: z.boolean().optional(),
   decisions: list(decision, { min: 1, max: DECISIONS_MAX }),
   tabs: list(tab, { min: 1, max: 10 }).optional(),
   questions: optionalList(question, 20),

@@ -3,6 +3,7 @@
 
 import { readFile } from "node:fs/promises";
 import { POLL_WAIT_MINUTES } from "../guide.ts";
+import { LIGHTWEIGHT } from "../plan/schema.ts";
 import type { FeedbackItem, PollRequest, PollResponse, PollStage } from "../protocol.ts";
 import { plural } from "../render/parts.ts";
 import { CliError, display, parseArgs, planArg } from "./args.ts";
@@ -136,6 +137,7 @@ function feedbackOutput(file: string, items: FeedbackItem[], stage: PollStage): 
     ...(skipped.length ? { skipped } : {}),
   };
   const others = items.filter((item) => item.kind !== "approval" && item.kind !== "decisions");
+  const lightweight = "lightweight" in stage && stage.lightweight;
   // Skips are plan state the reviewer set directly on the page, not feedback: restate them on every
   // response so a skip made at any time reaches whatever the agent writes next.
   const skippedIds = skipped.map((s) => s.id).join(", ");
@@ -150,7 +152,9 @@ function feedbackOutput(file: string, items: FeedbackItem[], stage: PollStage): 
     const total = decisions.answered.length + decisions.unanswered.length;
     out.next_step = sentences(
       `The reviewer submitted the key decisions: ${decisions.answered.length} of ${total} answered.`,
-      `Now write the plan: read \`coplan guide plan\` and \`coplan guide tabs\`, then add \`tabs\` to ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`,
+      lightweight
+        ? `Now write the lightweight plan \`coplan guide lightweight\` describes - an overview, the main flow and the edge cases that matter, in ${LIGHTWEIGHT.minutes} minutes of reading or less - as \`tabs\` in ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`
+        : `Now write the plan: read \`coplan guide plan\` and \`coplan guide tabs\`, then add \`tabs\` to ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`,
       decisions.answered.length > 0 &&
         "Every answered decision is a requirement, free-text answers included; the plan must follow them.",
       decisions.unanswered.length > 0 &&
@@ -182,7 +186,9 @@ function feedbackOutput(file: string, items: FeedbackItem[], stage: PollStage): 
     out.next_step = sentences(
       "The reviewer approved the plan as it stands.",
       others.length > 0 && "Apply the notes that came with it to the slices, not the approved plan.",
-      `Now break it into vertical slices: read \`coplan guide slices\`, then add \`slices\` to ${f} without changing any other part - editing the approved plan re-opens its review.`,
+      lightweight
+        ? `Now break it into 2-${LIGHTWEIGHT.slicesMax} light vertical slices as \`coplan guide lightweight\` describes, and add them as \`slices\` to ${f} without changing any other part - editing the approved plan re-opens its review.`
+        : `Now break it into vertical slices: read \`coplan guide slices\`, then add \`slices\` to ${f} without changing any other part - editing the approved plan re-opens its review.`,
       skipNote,
       `When they are written, ${replyStep}`,
     );

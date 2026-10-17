@@ -101,3 +101,18 @@ test("reading time is reported and budgets warn only once a plan exists", () => 
   assert.equal(budgetWarnings({ ...plan, budget: "small" as const }).length, 1);
   assert.deepEqual(budgetWarnings({ ...valid(decisionsOnlyPlan()), budget: "small" as const }), []);
 });
+
+test("a lightweight plan reads against its own budget, and plans without the flag keep their hashes", () => {
+  const plan = valid({ ...examplePlan(), lightweight: true });
+  const reading = readingTime(plan);
+  assert.equal(reading.budget, "lightweight");
+  assert.equal(reading.budget_minutes, 3);
+  const [warning, ...rest] = budgetWarnings(plan);
+  assert.deepEqual(rest, []);
+  assert.match(warning?.message ?? "", /over the lightweight budget of 3 min/);
+
+  // The flag has no default, so it is absent from every plan that does not set it.
+  const before = valid(examplePlan());
+  assert.equal("lightweight" in before, false);
+  assert.notEqual(planPartHash(plan), planPartHash(before), "turning it on re-opens the plan's approval");
+});

@@ -124,6 +124,17 @@ test("slices render on the Execution tab, grouped into phases, and it opens once
   assert.match(html, /data-sp-target="slices\[0\]\.tasks\[1\]" data-sp-kind="task"/);
 });
 
+test("a lightweight plan says so in the header, and its slices may go without a demo", () => {
+  const slices = structuredClone(SLICES).map(({ demo: _demo, ...slice }) => slice);
+  const html = render(
+    { ...examplePlan(), lightweight: true, questions: [], slices },
+    { stageOverride: { stage: "slices_review", phase: "slices" } },
+  );
+  assert.match(html, /<span class="sp-reading">Lightweight · \d+(\.5)? min plan · \d+(\.5)? min slices<\/span>/);
+  assert.doesNotMatch(html, /class="sp-demo"/);
+  assert.doesNotMatch(render(examplePlan()), /Lightweight/);
+});
+
 test("sequence notes do not take a step number", () => {
   const svg = renderSequence(
     {

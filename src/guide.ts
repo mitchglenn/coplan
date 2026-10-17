@@ -1,11 +1,17 @@
 // Agent-facing guidance. The CLI is the single source of truth for how to write and review a plan;
 // the installed skill only points here, so an installed copy never goes stale against the engine.
 
+import { LIGHTWEIGHT } from "./plan/schema.ts";
+
 export const DESCRIPTION =
-  "Coplan turns a feature request into a structured plan an engineer reviews in 10-15 minutes, then into vertical slices and tasks. You write plan.json; Coplan validates it, renders it as a tabbed HTML page, and runs the review loop in the browser. It moves through up to three human checkpoints: the reviewer answers key decisions, approves the plan, then approves the slices - unless, when approving the plan, they choose to skip slicing and build straight away.";
+  "Coplan turns a feature request into a structured plan an engineer reviews in 10-15 minutes, then into vertical slices and tasks. You write plan.json; Coplan validates it, renders it as a tabbed HTML page, and runs the review loop in the browser. It moves through up to three human checkpoints: the reviewer answers key decisions, approves the plan, then approves the slices - unless, when approving the plan, they choose to skip slicing and build straight away. A lightweight plan keeps the same checkpoints with each one cut down, so the whole review takes about five minutes.";
+
+/** What to read before planning. Every plan starts here, lightweight ones included. */
+const CODEBASE_READING =
+  "Read the codebase before planning against it: the schema, one feature built the way this one will be, the test convention, and how authorization works.";
 
 export const WORKFLOW = [
-  "1. Read the codebase before planning against it: the schema, one feature built the way this one will be, the test convention, and how authorization works.",
+  `1. ${CODEBASE_READING}`,
   "2. Run `coplan guide decisions`, then `coplan new <slug>` to scaffold .coplan/<slug>/plan.json.",
   "3. Write the title, summary and 8-12 key decisions - nothing else yet. Run `coplan render <plan.json>` until it reports no errors.",
   "4. Run `coplan open <plan.json>`, then `coplan poll <plan.json>` in the foreground and wait. The reviewer answers the decisions they care about and submits.",
@@ -14,6 +20,9 @@ export const WORKFLOW = [
   "7. Approving the plan, the reviewer chooses what comes next, and the poll says which. To slice it: run `coplan guide slices`, add `slices` without touching the approved plan, render, and poll with a reply; iterate until the reviewer approves the slices. To build now: the review is closed, so start building from the approved plan - no slices.",
   "8. When the slices are approved the review is complete. Report back in chat; build only when the user asks, slice by slice in phase order, reporting each task as `coplan guide build` describes.",
 ];
+
+export const LIGHTWEIGHT_WORKFLOW =
+  "When the user asks for a lightweight plan (or a quick or fast one), run `coplan new <slug> --lightweight` in step 2, and read `coplan guide lightweight` instead of the decisions, plan, tabs and slices guides. The checkpoints and commands stay the same; each step is smaller, and every next_step says how.";
 
 /** How long one `coplan poll` waits before answering `waiting`: inside the 10 minutes agents' shells allow. */
 export const POLL_WAIT_MINUTES = 8;
@@ -30,8 +39,37 @@ export const RULES = [
   "Do not respond to the user in chat while a review is open unless the poll returns ended or browser trouble; the review page is the conversation.",
 ];
 
+const DECISION_SHAPE =
+  "{ id: 'D1', question, aspect: scope|requirements|constraints|technical, select: single|multiple, context?, options: [{ id, label, detail?, recommended? }] (2-5) }";
+
+const QUESTION_SHAPE =
+  "{ id, question, context?, options?: [{ id, label, detail?, recommended? }], allow_other?: true }";
+
+/** The fields of every tab kind, for `coplan guide tabs` and the lightweight guide. */
+const TAB_SHAPES = {
+  overview: {
+    problem: "required Markdown",
+    change: "required Markdown",
+    goals: "required [{ title, detail? }]",
+    out_of_scope: "required [Markdown]",
+    findings: "[{ note, refs?: [path] }]",
+  },
+  flows: {
+    flows:
+      "required [{ id, title, trigger, participants: [{ id, label, kind?: actor|system|external|store }], steps: [{ from, to, label, reply?: true } | { note, over: [participant ids, 1-2] }], state?: { creates?, updates?, reads? }, notes? }]",
+  },
+  concepts: { entities: "required [{ id, name, definition, rules?: [Markdown], constraints?: [Markdown] }]" },
+  edge_cases: { cases: "required [{ id, title, priority: high|medium|low, detail }]" },
+  security: { risks: "required [{ id, title, level: high|medium|low, exposure, mitigations: [Markdown] }]" },
+  gaps: { gaps: "required [{ id, title, detail }]" },
+  custom: {
+    blocks:
+      'required [{ type: "markdown", body } | { type: "callout", tone?: note|decision|warning|risk, title?, body } | { type: "table", caption?, columns: [..], rows: [[..]] } | { type: "code", code, path?, language?, caption? } | { type: "html", html, caption? }] - each may carry an id. An html block renders in the page as written: markup, SVG, <style>, <script> and event handlers all work, so it can be an interactive UI mock or a before/after toggle. It shares the page with the review UI, so prefix every selector with a class unique to the block, wrap scripts in a function, and touch nothing outside the block. Scripts, stylesheets and fonts do not load from the network.',
+  },
+};
+
 const TOPICS: Record<string, () => Record<string, unknown>> = {
-  workflow: () => ({ description: DESCRIPTION, workflow: WORKFLOW, rules: RULES }),
+  workflow: () => ({ description: DESCRIPTION, workflow: WORKFLOW, lightweight: LIGHTWEIGHT_WORKFLOW, rules: RULES }),
 
   decisions: () => ({
     purpose:
@@ -54,10 +92,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "Poll returns the answered decisions and the unanswered ones. Answered decisions are requirements. For unanswered ones, make the call and say what you assumed where it matters in the plan.",
       "Coplan shows the reviewer's answers in the plan's Decisions tab; do not restate them as a list in the plan.",
     ],
-    shape: {
-      decisions:
-        "required, 1-12 (aim for 8-12): [{ id: 'D1', question, aspect: scope|requirements|constraints|technical, select: single|multiple, context?, options: [{ id, label, detail?, recommended? }] (2-5) }]",
-    },
+    shape: { decisions: `required, 1-12 (aim for 8-12): [${DECISION_SHAPE}]` },
   }),
 
   plan: () => ({
@@ -112,28 +147,8 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       kind: "required",
       intro: "optional Markdown shown above the tab",
     },
-    kinds: {
-      overview: {
-        problem: "required Markdown",
-        change: "required Markdown",
-        goals: "required [{ title, detail? }]",
-        out_of_scope: "required [Markdown]",
-        findings: "[{ note, refs?: [path] }]",
-      },
-      flows: {
-        flows:
-          "required [{ id, title, trigger, participants: [{ id, label, kind?: actor|system|external|store }], steps: [{ from, to, label, reply?: true } | { note, over: [participant ids, 1-2] }], state?: { creates?, updates?, reads? }, notes? }]",
-      },
-      concepts: { entities: "required [{ id, name, definition, rules?: [Markdown], constraints?: [Markdown] }]" },
-      edge_cases: { cases: "required [{ id, title, priority: high|medium|low, detail }]" },
-      security: { risks: "required [{ id, title, level: high|medium|low, exposure, mitigations: [Markdown] }]" },
-      gaps: { gaps: "required [{ id, title, detail }]" },
-      custom: {
-        blocks:
-          'required [{ type: "markdown", body } | { type: "callout", tone?: note|decision|warning|risk, title?, body } | { type: "table", caption?, columns: [..], rows: [[..]] } | { type: "code", code, path?, language?, caption? } | { type: "html", html, caption? }] - each may carry an id. An html block renders in the page as written: markup, SVG, <style>, <script> and event handlers all work, so it can be an interactive UI mock or a before/after toggle. It shares the page with the review UI, so prefix every selector with a class unique to the block, wrap scripts in a function, and touch nothing outside the block. Scripts, stylesheets and fonts do not load from the network.',
-      },
-    },
-    question: "{ id, question, context?, options?: [{ id, label, detail?, recommended? }], allow_other?: true }",
+    kinds: TAB_SHAPES,
+    question: QUESTION_SHAPE,
     example_flow: {
       id: "F1",
       title: "Admin sends an invitation",
@@ -190,6 +205,46 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "Progress lives in the review record, which only the server writes; never edit it or plan.json to record progress.",
     ],
   }),
+
+  lightweight: () => ({
+    purpose:
+      "A lightweight plan steps through the same checkpoints - key decisions, the plan, then slices or build now - with each one cut to what a reviewer takes in at a glance, so the whole review fits in about five minutes. The time goes into writing less: every item is a line or two, and anything a sensible default settles is left out.",
+    codebase: CODEBASE_READING,
+    decisions: [
+      `Write ${LIGHTWEIGHT.decisionsMin}-${LIGHTWEIGHT.decisionsMax} key decisions, most impactful first: the scope and technical calls that would change what you build. Skip anything the request, the code or a sensible default already answers.`,
+      "Each offers 2-4 short options with the one you would pick marked `recommended`. Add `context` only when the trade-off is not obvious. Coplan always adds a free-text answer.",
+      "Unanswered decisions are yours to make: take the recommended option and say so where it matters in the plan.",
+    ],
+    plan: [
+      `It must read in ${LIGHTWEIGHT.minutes} minutes or less; \`coplan render\` warns past that. Leave \`budget\` out: a lightweight plan has its own.`,
+      "Tabs, in order: overview; flows with the one main flow (a second only if it is a genuinely different path); edge_cases with 3-6 cases, high and medium priority only, security risks folded in as cases.",
+      "overview: problem and change in a sentence or two each, 2-4 goals, a short out_of_scope list that also names what you set aside, and findings only for the files that constrain the plan. No gaps tab.",
+      "Add another tab only when the feature cannot be understood without it, such as a small data model table in a custom tab.",
+      "Verify what you state against the code; label inference as inference. Never invent a requirement - ask it as a question instead, and only when you cannot proceed without the answer.",
+      "The reviewer can skip edge cases on the page. A skipped item stays in plan.json untouched; plan no work for it.",
+    ],
+    slices: [
+      "Only after the reviewer approves the plan and chooses to slice it, and without editing the approved plan.",
+      `Write 2-${LIGHTWEIGHT.slicesMax} vertical slices. The first is the thinnest path through the whole feature; later ones widen it.`,
+      `Each has a goal, 1-3 acceptance criteria and 1-${LIGHTWEIGHT.tasksMax} tasks. \`demo\`, \`layers\`, task sizes and files are optional; add them only when they say something the goal does not.`,
+      "depends_on between slices defines phases; keep it to what truly has to come first.",
+    ],
+    shape: {
+      top_level:
+        "version: 1, title, summary (two or three sentences), lightweight: true, decisions, then tabs, questions and slices as each checkpoint opens",
+      decisions: `${LIGHTWEIGHT.decisionsMin}-${LIGHTWEIGHT.decisionsMax}: [${DECISION_SHAPE}]`,
+      tabs: {
+        every_tab: "{ id: kebab-case, title, kind, intro? }",
+        overview: TAB_SHAPES.overview,
+        flows: TAB_SHAPES.flows,
+        edge_cases: TAB_SHAPES.edge_cases,
+      },
+      question: QUESTION_SHAPE,
+      slices: `[{ id: 'S1', title, goal, acceptance: [Markdown] (1-3), tasks: [{ id: 'S1.T1', title, detail? }] (1-${LIGHTWEIGHT.tasksMax}), depends_on?: [slice ids], demo?, layers? }]`,
+      ids: "Short, with a prefix, one namespace across the plan: D decisions, F flows, E edge cases, Q questions, S slices, S1.T1 tasks.",
+      everything_else: "Every other tab kind and field: `coplan guide tabs`.",
+    },
+  }),
 };
 
 export function guideTopics() {
@@ -201,6 +256,8 @@ export function guideTopics() {
       tabs: "The plan.json reference: every field of every tab kind, with a worked flow",
       slices: "Vertical slicing after plan approval: rules and the slices/tasks shape",
       build: "Building approved slices: the task-by-task loop and how to report each step",
+      lightweight:
+        "Everything a lightweight plan needs, all three checkpoints in one read: for when the review has to take minutes",
     },
     help: [
       "Run `coplan guide <topic>`. Read workflow and decisions first; plan and tabs once the decisions are answered; slices after the plan is approved; build once the slices are approved and the user asks you to build.",

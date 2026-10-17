@@ -6,6 +6,7 @@ import {
   type Budget,
   type EdgeCase,
   type Gap,
+  LIGHTWEIGHT,
   type Plan,
   type Risk,
   type Slice,
@@ -29,7 +30,8 @@ export interface ReadingTime {
   plan_words: number;
   slices_minutes: number;
   decisions: number;
-  budget: Budget;
+  /** A lightweight plan has its own budget, whatever `budget` says. */
+  budget: Budget | "lightweight";
   budget_minutes: number;
 }
 
@@ -43,8 +45,8 @@ export function readingTime(plan: Plan): ReadingTime {
     plan_words: planReading.words,
     slices_minutes: slicesReading.minutes,
     decisions: plan.decisions.length,
-    budget: plan.budget,
-    budget_minutes: BUDGET_MINUTES[plan.budget],
+    budget: plan.lightweight ? "lightweight" : plan.budget,
+    budget_minutes: plan.lightweight ? LIGHTWEIGHT.minutes : BUDGET_MINUTES[plan.budget],
   };
 }
 
@@ -57,6 +59,14 @@ export function budgetWarnings(plan: Plan): Diagnostic[] {
       {
         path: "(plan)",
         message: `reads in about ${reading.plan_minutes} min, past the ${MAX_READING_MINUTES} min ceiling. Cut it: merge overlapping edge cases, drop low-priority detail into gaps, and keep one flow per meaningful path`,
+      },
+    ];
+  }
+  if (plan.lightweight && reading.plan_minutes > reading.budget_minutes) {
+    return [
+      {
+        path: "(plan)",
+        message: `reads in about ${reading.plan_minutes} min, over the lightweight budget of ${reading.budget_minutes} min. Cut it: one flow, the edge cases that matter most, and a line or two per item`,
       },
     ];
   }
