@@ -51,13 +51,15 @@ export async function readReview(planFile: string): Promise<ReviewRecord> {
       { cause: error },
     );
   }
+  const { build, ...rest } = parsed;
   return {
     ...emptyReview(),
-    ...parsed,
+    ...rest,
     approvals: isObject(parsed.approvals) ? parsed.approvals : {},
     skips: isObject(parsed.skips) ? parsed.skips : {},
     queue: Array.isArray(parsed.queue) ? parsed.queue : [],
     history: Array.isArray(parsed.history) ? parsed.history : [],
+    ...(isObject(build) && isObject(build.tasks) ? { build } : {}),
   };
 }
 

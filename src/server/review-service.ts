@@ -2,11 +2,14 @@
 // woken, replies join the conversation, pages hear about every change. Routes translate HTTP into
 // these calls; this class keeps the store, the waiting polls and the open pages in step.
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { loadPlan, renderLoaded, type LoadResult } from "../engine.ts";
+import { applyTaskUpdate, buildProgress, TaskError } from "../plan/build.ts";
 import { skippableRecords } from "../plan/metrics.ts";
+import { hasSlices, type Stage } from "../plan/stage.ts";
 import type {
   ApprovalPhase,
+  BuildSummary,
   DecisionAnswer,
   EndedBy,
   FeedbackItem,
@@ -17,6 +20,8 @@ import type {
   RenderedHistoryEntry,
   ReviewRecord,
   ServerMessage,
+  TaskStatus,
+  TaskUpdate,
 } from "../protocol.ts";
 import { md } from "../render/markdown.ts";
 import { appendHistory, htmlPathFor, writeFileAtomic, type ReviewStore } from "../review-store.ts";
@@ -83,6 +88,30 @@ export class ReviewService {
     await this.rewriteHtml(session);
     this.#events.broadcast(session.key, { type: "skips", skips });
     return skips;
+  }
+
+  /**
+   * Records one of the agent's reports on a task of the approved slices, then refreshes plan.html
+   * and every open page. Throws `TaskError` when the report does not fit the plan.
+   */
+  async recordTask(
+    session: Session,
+    taskId: string,
+    update: TaskUpdate,
+  ): Promise<{ status: TaskStatus; warnings: string[]; build: BuildSummary }> {
+    const result = await this.#store.update(session.file, async (review) => {
+      const loaded = await loadPlan(session.file, { review });
+      if (!loaded.ok) throw new TaskError("the plan does not validate; fix it and run `coplan render` first");
+      if (!loaded.stage.slicesApproved || !hasSlices(loaded.plan)) throw new TaskError(notBuilding(loaded.stage));
+      review.build ??= { tasks: {} };
+      const now = new Date().toISOString();
+      const warnings = applyTaskUpdate(loaded.plan.slices, review.build.tasks, taskId, update, now);
+      const progress = buildProgress(loaded.plan.slices, review.build.tasks);
+      return { status: progress.tasks.get(taskId)?.status ?? "ready", warnings, build: progress.summary };
+    });
+    await this.rewriteHtml(session);
+    this.#events.broadcast(session.key, { type: "reload" });
+    return result;
   }
 
   /** Removes the batches the agent has read. Returns how many remain. */
@@ -181,6 +210,15 @@ function pollStage(loaded: LoadResult): PollStage {
   };
 }
 
+/** Why a plan takes no task reports right now. */
+function notBuilding(stage: Stage): string {
+  if (stage.slicesSkipped) return "the plan was approved to build without slices, so it has no tasks to report";
+  if (stage.slicesApprovalStale) {
+    return "the slices changed after their approval, so their review re-opened; report tasks again once the reviewer approves them";
+  }
+  return "the slices are not approved yet; tasks are reported only while building approved slices";
+}
+
 /** Agent replies are Markdown; the page receives them rendered. */
 export function renderHistory(history: ReviewRecord["history"]): RenderedHistoryEntry[] {
   return history.map((entry) => (entry.role === "agent" ? { ...entry, html: md(entry.text).toString() } : entry));
@@ -190,5 +228,8 @@ export function renderHistory(history: ReviewRecord["history"]): RenderedHistory
 export function planSignature(loaded: LoadResult): string {
   if (!loaded.ok) return "invalid";
   const skips = Object.keys(loaded.review.skips).toSorted().join(",");
-  return `${loaded.stage.stage}:${loaded.stage.planHash}:${loaded.stage.slicesHash ?? "-"}:${skips}`;
+  const build = loaded.review.build
+    ? createHash("sha256").update(JSON.stringify(loaded.review.build)).digest("hex").slice(0, 12)
+    : "-";
+  return `${loaded.stage.stage}:${loaded.stage.planHash}:${loaded.stage.slicesHash ?? "-"}:${skips}:${build}`;
 }

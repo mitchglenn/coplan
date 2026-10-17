@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { after, before, test } from "node:test";
-import { decisionsOnlyPlan } from "./helpers.ts";
+import { decisionsHash, planPartHash, slicesHash } from "../src/plan/stage.ts";
+import { decisionsOnlyPlan, examplePlan, SLICES, validPlan } from "./helpers.ts";
 
 // The `coplan` command as an agent runs it: a real process, in a home directory of its own, with
 // a server of its own on a free port.
@@ -99,6 +100,68 @@ test("a poll with nothing to hand over returns in time and tells the agent to po
   const result = JSON.parse(stdout);
   assert.equal(result.status, "waiting");
   assert.match(result.next_step, /Run `coplan poll \.coplan\/demo\/plan\.json` again now/);
+});
+
+test("building approved slices: each `coplan task` report says what to do next, and status shows the build", async () => {
+  const project = join(home, "builder");
+  const dir = join(project, ".coplan/invites");
+  await mkdir(dir, { recursive: true });
+  const json = { ...examplePlan(), questions: [], slices: structuredClone(SLICES) };
+  const plan = validPlan(json);
+  const at = "2026-10-16T12:00:00.000Z";
+  await writeFile(join(dir, "plan.json"), JSON.stringify(json));
+  await writeFile(
+    join(dir, "plan.review.json"),
+    JSON.stringify({
+      version: 1,
+      decisions: { hash: decisionsHash(plan), at, answers: {} },
+      approvals: { plan: { hash: planPartHash(plan), at, next: "slices" }, slices: { hash: slicesHash(plan), at } },
+      skips: {},
+      queue: [],
+      history: [],
+    }),
+  );
+  const file = ".coplan/invites/plan.json";
+  const run = async (...args: string[]) =>
+    JSON.parse((await promisify(execFile)(process.execPath, [BIN, ...args], { cwd: project, env })).stdout);
+
+  const guide = await coplan("guide", "build");
+  assert.deepEqual(Object.keys(guide), ["purpose", "loop", "rules"]);
+  assert.deepEqual((await run("status", file)).build.next, ["S1.T1"]);
+
+  const started = await run("task", "start", file, "S1.T1");
+  assert.equal(started.status, "in_progress");
+  assert.match(started.next_step, /Build S1.T1 now.*coplan task built \.coplan\/invites\/plan\.json S1.T1`/);
+
+  const built = await run("task", "built", file, "S1.T1");
+  assert.equal(built.status, "built");
+  assert.match(built.next_step, /ask the user in chat to review S1.T1.*Do not commit until they accept/);
+
+  const committed = await run("task", "commit", file, "S1.T1", "abc1234");
+  assert.equal(committed.status, "committed");
+  assert.match(committed.next_step, /open a pull request for S1.T1 alone.*coplan task link .* S1.T1 --pr <url>/);
+
+  const linked = await run("task", "link", file, "S1.T1", "--pr", "https://github.com/acme/app/pull/7");
+  assert.match(linked.next_step, /Next ready task: S1.T2/);
+  assert.deepEqual((await run("status", file)).build.next, ["S1.T2"]);
+
+  // A refused report prints its error as JSON and exits non-zero.
+  const fails = (...args: string[]) =>
+    promisify(execFile)(process.execPath, [BIN, ...args], { cwd: project, env }).then(
+      () => assert.fail("expected the command to fail"),
+      (error: { code: number; stdout: string }) => {
+        assert.equal(error.code, 1);
+        return JSON.parse(error.stdout);
+      },
+    );
+  assert.match(
+    (await fails("task", "built", file, "S1.T2")).error,
+    /S1.T2 is ready; start it before reporting it built/,
+  );
+  assert.match(
+    (await fails("task", "finish", file, "S1.T2")).error,
+    /task needs an action: start, built, commit, link/,
+  );
 });
 
 function freePort(): Promise<number> {

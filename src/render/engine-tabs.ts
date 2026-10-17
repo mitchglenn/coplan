@@ -1,11 +1,11 @@
-// The tabs Coplan adds to every plan: the key decisions, open questions, and slices. Their
-// inputs start disabled; the review client enables them when the page is served for review.
+// The tabs Coplan adds to every plan: the key decisions and open questions (slices have their own
+// module). Their inputs start disabled; the review client enables them when the page is served for
+// review.
 
 import { html, type Html } from "./html.ts";
 import { md, mdInline } from "./markdown.ts";
-import { eyebrow, idChip, plainText, plural, refs, target } from "./parts.ts";
-import { sliceWaves } from "../plan/metrics.ts";
-import type { Decision, Option, Question, Slice } from "../plan/schema.ts";
+import { idChip, target } from "./parts.ts";
+import type { Decision, Option, Question } from "../plan/schema.ts";
 import type { DecisionAnswer } from "../protocol.ts";
 
 const ASPECT_LABELS: Record<Decision["aspect"], string> = {
@@ -102,53 +102,4 @@ function optionList({
 
 function optionBody(o: Option): Html {
   return html`<span class="sp-option-body"><span class="sp-option-label">${mdInline(o.label)}${o.recommended ? html`<span class="sp-rec">Recommended</span>` : null}</span>${o.detail ? html`<span class="sp-md sp-option-detail">${md(o.detail)}</span>` : null}</span>`;
-}
-
-// --- slices ---
-
-export function renderSlices(slices: Slice[]): Html {
-  const waves = sliceWaves(slices);
-  const taskCount = slices.reduce((sum, s) => sum + s.tasks.length, 0);
-  const titles = new Map(slices.map((s) => [s.id, s.title]));
-  const strip = waves.map(
-    (wave, i) =>
-      html`<li class="sp-wave"><span class="sp-wave-label">Wave ${i + 1}</span><span class="sp-wave-items">${wave.map(
-        (id) =>
-          html`<a class="sp-wave-chip" href="#slice-${id}" data-sp-jump="slice-${id}">${idChip(id)}<span class="sp-wave-title">${mdInline(titles.get(id))}</span></a>`,
-      )}</span></li>`,
-  );
-  const summary = html`<div class="sp-slices-summary"><p class="sp-muted">${plural(slices.length, "vertical slice")} · ${plural(taskCount, "task")} · ${plural(waves.length, "wave")}. Slices in the same wave do not depend on each other and can be built in parallel.</p><ol class="sp-waves">${strip}</ol></div>`;
-  return html`${summary}${slices.map(renderSlice)}`;
-}
-
-function renderSlice(s: Slice, i: number): Html {
-  const slicePath = `slices[${i}]`;
-  const layers = s.layers.length
-    ? html`<span class="sp-layers">${s.layers.map((layer) => html`<span class="sp-layer">${layer}</span>`)}</span>`
-    : null;
-  const deps = s.depends_on.length
-    ? html`<p class="sp-deps">${eyebrow("Depends on")}${s.depends_on.map((d) => html`<a class="sp-dep" href="#slice-${d}" data-sp-jump="slice-${d}">${d}</a>`)}</p>`
-    : null;
-  const acceptance = s.acceptance.map(
-    (criterion, j) =>
-      html`<li${target(`${slicePath}.acceptance[${j}]`, "criterion", `${s.id} acceptance: ${plainText(criterion)}`)}>${mdInline(criterion)}</li>`,
-  );
-  const tasks = s.tasks.map((t, j) => {
-    const meta = [
-      t.layer ? html`<span class="sp-layer">${t.layer}</span>` : null,
-      t.size ? html`<span class="sp-size" title="Relative size">${t.size}</span>` : null,
-    ];
-    const taskDeps = t.depends_on.length
-      ? html`<span class="sp-task-deps">after ${t.depends_on.map((d, k) => html`${k ? ", " : null}<code>${d}</code>`)}</span>`
-      : null;
-    return html`<li class="sp-task"${target(`${slicePath}.tasks[${j}]`, "task", `${t.id}: ${t.title}`, t.id)}><div class="sp-task-head">${idChip(t.id)}<span class="sp-task-title">${mdInline(t.title)}</span><span class="sp-task-meta">${meta}</span></div>${t.detail ? html`<div class="sp-md sp-muted">${md(t.detail)}</div>` : null}${t.files.length || taskDeps ? html`<div class="sp-task-foot">${refs(t.files)}${taskDeps}</div>` : null}</li>`;
-  });
-  return html`<article class="sp-card sp-slice" id="slice-${s.id}"${target(slicePath, "slice", `${s.id}: ${s.title}`, s.id)}>
-<header class="sp-card-head">${idChip(s.id)}<h2 class="sp-card-title">${mdInline(s.title)}</h2>${layers}</header>
-${deps}
-<div class="sp-md sp-slice-goal">${md(s.goal)}</div>
-<div class="sp-demo"${target(`${slicePath}.demo`, "demo", `${s.id} demo`)}>${eyebrow("Demo")}<div class="sp-md">${md(s.demo)}</div></div>
-<div class="sp-slice-cols"><section>${eyebrow("Acceptance")}<ul class="sp-criteria">${acceptance}</ul></section><section>${eyebrow(`Tasks · ${s.tasks.length}`)}<ol class="sp-tasks">${tasks}</ol></section></div>
-${s.notes ? html`<div class="sp-md sp-notes">${md(s.notes)}</div>` : null}
-</article>`;
 }

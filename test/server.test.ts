@@ -320,6 +320,60 @@ test("after the end, the browser cannot queue more feedback", async () => {
   assert.equal(result.status, 409);
 });
 
+test("after the slices are approved, the agent's task reports reach the review record, plan.html and open pages", async () => {
+  const task = (body: Record<string, unknown>) => request("POST", "/api/task", { body: { file, ...body } });
+  const first = await bootstrapOf();
+  assert.equal(first.ended_by, "approval");
+
+  let result = await task({ task: "S1.T1", action: "start" });
+  assert.equal(result.status, 200);
+  assert.equal(result.json.status, "in_progress");
+  assert.deepEqual(result.json.build.in_progress, ["S1.T1"]);
+  assert.notEqual((await bootstrapOf()).signature, first.signature, "a report reloads open pages");
+  assert.match(await readFile(join(dir, "plan.html"), "utf8"), /Building · 0 of 4 committed/);
+
+  result = await task({ task: "S1.T2", action: "built" });
+  assert.equal(result.status, 409);
+  assert.match(result.json.error, /S1.T2 is waiting; start it before reporting it built/);
+
+  await task({ task: "S1.T1", action: "built" });
+  result = await task({ task: "S1.T1", action: "commit", sha: "abc1234", pr: "https://github.com/acme/app/pull/7" });
+  assert.equal(result.json.status, "committed");
+  assert.deepEqual(result.json.build.next, ["S1.T2"]);
+
+  const review = JSON.parse(await readFile(join(dir, "plan.review.json"), "utf8"));
+  assert.equal(review.build.tasks["S1.T1"].commits[0].sha, "abc1234");
+  assert.equal(review.build.tasks["S1.T1"].pr.url, "https://github.com/acme/app/pull/7");
+  assert.match(await readFile(join(dir, "plan.html"), "utf8"), /Building · 1 of 4 committed/);
+
+  assert.equal((await task({ task: "S1.T1", action: "rewind" })).status, 400);
+  const foreign = await request("POST", "/api/task", {
+    body: { file, task: "S1.T1", action: "start" },
+    origin: "https://evil.example",
+  });
+  assert.equal(foreign.status, 403);
+});
+
+test("a task report for an approved plan the registry lost registers its session; other plans are refused", async () => {
+  const lost = join(dir, "lost.json");
+  await writeFile(lost, await readFile(file, "utf8"));
+  await writeFile(join(dir, "lost.review.json"), await readFile(join(dir, "plan.review.json"), "utf8"));
+  const lostFile = await canonicalPlanPath(lost);
+  const result = await request("POST", "/api/task", { body: { file: lostFile, task: "S1.T2", action: "start" } });
+  assert.equal(result.status, 200);
+  const page = await request("GET", `/plan/${sessionKey(lostFile)}`);
+  assert.equal(page.status, 200);
+  assert.equal(bootstrapIn(page.text).ended_by, "approval", "the review is over, so the session starts ended");
+
+  const draft = join(dir, "draft.json");
+  await writeFile(draft, JSON.stringify(decisionsOnlyPlan()));
+  const refused = await request("POST", "/api/task", {
+    body: { file: await canonicalPlanPath(draft), task: "S1.T1", action: "start" },
+  });
+  assert.equal(refused.status, 409);
+  assert.match(refused.json.error, /has no review with approved slices/);
+});
+
 test("approving the plan to build now skips slicing and closes the review", async () => {
   const plan = { ...examplePlan(), questions: [] };
   await writeFile(join(dir, "build.json"), JSON.stringify(plan));

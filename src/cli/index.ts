@@ -17,6 +17,7 @@ const COMMANDS = new Map<string, Command>([
   ["open", commands.open],
   ["poll", poll],
   ["status", commands.status],
+  ["task", commands.task],
   ["end", commands.end],
   ["stop", commands.stop],
   ["server", commands.server],

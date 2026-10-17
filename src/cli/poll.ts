@@ -116,7 +116,7 @@ function endedStep(file: string, endedBy: string | null, stage: PollStage): stri
   if (endedBy === "approval") {
     return "slices_skipped" in stage && stage.slices_skipped
       ? `The review is complete: the reviewer approved the plan and chose to build now, without slices. Stop polling and build from the approved plan in ${display(file)}.`
-      : "The review is complete: the plan and its slices are approved. Stop polling. Tell the user in chat, and start building only when they ask, slice by slice in wave order.";
+      : "The review is complete: the plan and its slices are approved. Stop polling. Tell the user in chat, and start building only when they ask, slice by slice in phase order, reporting each task as `coplan guide build` describes.";
   }
   if (endedBy === "user") {
     return `The reviewer ended the review. Stop polling and continue in chat. Only reopen with \`coplan open ${display(file)} --reopen\` if they ask.`;
@@ -165,7 +165,7 @@ function feedbackOutput(file: string, items: FeedbackItem[], stage: PollStage): 
   const approval = items.find((item) => item.kind === "approval");
   if (approval?.phase === "slices") {
     out.next_step =
-      "The reviewer approved the slices. The plan is complete and the review is closed. Stop polling. Summarize the approved plan and its slice order for the user in chat, and start building only when they ask, one slice at a time in wave order.";
+      "The reviewer approved the slices. The plan is complete and the review is closed. Stop polling. Summarize the approved plan and its slice order for the user in chat, and start building only when they ask, one slice at a time in phase order. Before building, read `coplan guide build`: you report every task with `coplan task`, and the user reviews each one in chat before it is committed.";
     return out;
   }
   if (approval?.phase === "plan" && approval.next === "build") {

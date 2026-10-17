@@ -1,6 +1,9 @@
 // Routes the CLI calls on the agent's behalf.
 
+import { loadPlan } from "../engine.ts";
+import { TaskError } from "../plan/build.ts";
 import { APP, VERSION } from "../paths.ts";
+import type { TaskResponse, TaskUpdate } from "../protocol.ts";
 import type { App, Route } from "./app.ts";
 import { HttpError, readJson, sendJson } from "./http.ts";
 import type { Session } from "./sessions.ts";
@@ -13,6 +16,15 @@ export function agentRoutes(app: App): Route[] {
     const session = app.sessions.forFile(String(file ?? ""));
     if (!session) throw new HttpError(404, { status: "missing" });
     return session;
+  };
+
+  /** A session for a plan the registry does not know, allowed only once its slices are approved. */
+  const registerApproved = async (file: string): Promise<Session> => {
+    const loaded = await loadPlan(file);
+    if (!loaded.ok || !loaded.stage.slicesApproved) {
+      throw new TaskError(`${file} has no review with approved slices; open it with \`coplan open\` first`);
+    }
+    return app.sessions.forApprovedPlan(file);
   };
 
   return [
@@ -97,6 +109,28 @@ export function agentRoutes(app: App): Route[] {
       },
     },
     {
+      // `coplan task`: the agent reports a step of building the approved slices.
+      method: "POST",
+      pattern: /^\/api\/task$/,
+      caller: "agent",
+      handle: async ({ req, res }) => {
+        const body = await readJson(req);
+        const task = typeof body.task === "string" ? body.task.trim() : "";
+        if (!task) throw new HttpError(400, { ok: false, error: "task is required" });
+        const update = taskUpdate(body);
+        const file = String(body.file ?? "");
+        try {
+          const session = app.sessions.forFile(file) ?? (await registerApproved(file));
+          app.watch(session);
+          const result = await app.reviews.recordTask(session, task, update);
+          sendJson(res, 200, { ok: true, task, ...result } satisfies TaskResponse);
+        } catch (error) {
+          if (!(error instanceof TaskError)) throw error;
+          sendJson(res, 409, { ok: false, error: error.message } satisfies TaskResponse);
+        }
+      },
+    },
+    {
       // `coplan end`
       method: "POST",
       pattern: /^\/api\/end$/,
@@ -108,4 +142,24 @@ export function agentRoutes(app: App): Route[] {
       },
     },
   ];
+}
+
+/** The report a `coplan task` request carries, or a 400 when it is malformed. */
+function taskUpdate(body: Record<string, unknown>): TaskUpdate {
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+  switch (body.action) {
+    case "start":
+      return { action: "start" };
+    case "built":
+      return { action: "built" };
+    case "commit": {
+      const sha = text(body.sha);
+      if (!sha) throw new HttpError(400, { ok: false, error: "commit needs a sha" });
+      return { action: "commit", sha, remove: body.remove === true, pr: text(body.pr) };
+    }
+    case "link":
+      return { action: "link", pr: text(body.pr), jira: text(body.jira) };
+    default:
+      throw new HttpError(400, { ok: false, error: 'action must be "start", "built", "commit" or "link"' });
+  }
 }

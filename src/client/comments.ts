@@ -40,7 +40,7 @@ export function targetNode(path: string | undefined): Element | null {
 /** The review target under `node`, unless `node` is itself a control or part of the review UI. */
 function reviewableTarget(node: EventTarget | Node | null): Element | null {
   if (!(node instanceof Element)) return null;
-  if (node.closest("input, textarea, select, button, label, a, .spr-card, .spr-panel")) return null;
+  if (node.closest("input, textarea, select, button, label, a, summary, .spr-card, .spr-panel")) return null;
   const found = node.closest("[data-sp-target]");
   return found && (main.contains(found) || found.classList.contains("sp-summary")) ? found : null;
 }

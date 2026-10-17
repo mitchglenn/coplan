@@ -62,6 +62,26 @@ export class SessionRegistry {
     return { session };
   }
 
+  /**
+   * The session for a plan whose slices are approved, registering one if the registry lost it, so
+   * its page can still show the build. Such a review is over, so a new session starts ended.
+   */
+  async forApprovedPlan(file: string): Promise<Session> {
+    const existing = this.forFile(file);
+    if (existing) return existing;
+    const key = sessionKey(file);
+    const session: Session = {
+      key,
+      file,
+      status: "ended",
+      ended_by: "approval",
+      opened_at: new Date().toISOString(),
+    };
+    this.#sessions.set(key, session);
+    await this.#save();
+    return session;
+  }
+
   /** Marks a session ended. Returns false when it already was. */
   async end(session: Session, by: EndedBy): Promise<boolean> {
     if (session.status === "ended") return false;

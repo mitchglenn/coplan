@@ -21,7 +21,7 @@ import { wireDecisions } from "./decisions.ts";
 import { mountPanel, panelScroll, renderHistory, renderPanel, showBanner, ui } from "./panel.ts";
 import { wireQuestions } from "./questions.ts";
 import { applySkips, wireSkips } from "./skips.ts";
-import { boot, changed, endReview, isInvalidPage, onChange, state } from "./store.ts";
+import { boot, changed, endReview, isInvalidPage, onChange, review, state } from "./store.ts";
 
 if (isInvalidPage(boot)) {
   // The plan does not validate yet; this page only waits for the agent to fix it.
@@ -48,7 +48,12 @@ function start(): void {
   restoreScroll();
   panelScroll.scrollTop = panelScroll.scrollHeight;
   document.addEventListener("sp:tab", changed);
-  if (!state.ended) connect({ onMessage: handle, onConnected, onDisconnected });
+  // A review closed by approving the slices stays connected: the agent's build reports reload it.
+  if (!state.ended || followsBuild()) connect({ onMessage: handle, onConnected, onDisconnected });
+}
+
+function followsBuild(): boolean {
+  return state.endedBy === "approval" && Boolean(review.stage?.slicesApproved);
 }
 
 /** The plan changed. Reload, unless the reviewer is halfway through a comment. */

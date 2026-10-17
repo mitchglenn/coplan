@@ -5,15 +5,17 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { browserCode } from "./browser-code.ts";
-import { renderDecisionForm, renderDecisionSummary, renderQuestions, renderSlices, isAnswered } from "./engine-tabs.ts";
+import { renderDecisionForm, renderDecisionSummary, renderQuestions, isAnswered } from "./engine-tabs.ts";
 import { html, raw, type Html, type Interpolation } from "./html.ts";
 import { md } from "./markdown.ts";
-import { FAVICON, target } from "./parts.ts";
+import { FAVICON, formatTime, target } from "./parts.ts";
 import { activeCount, renderTab } from "./plan-tabs.ts";
+import { renderSlices } from "./slices.ts";
+import { buildProgress, type BuildProgress } from "../plan/build.ts";
 import type { ReadingTime } from "../plan/metrics.ts";
 import type { Plan } from "../plan/schema.ts";
 import { hasSlices, type Stage } from "../plan/stage.ts";
-import type { DecisionAnswer, ReviewBootstrap, ReviewRecord } from "../protocol.ts";
+import type { DecisionAnswer, ReviewBootstrap, ReviewRecord, TaskRecord } from "../protocol.ts";
 
 const STYLES = raw(await readFile(new URL("./styles.css", import.meta.url), "utf8"));
 const TABS_SCRIPT = raw(await browserCode("render/tabs"));
@@ -28,6 +30,8 @@ export interface PageInput {
   answers?: Record<string, DecisionAnswer>;
   /** Edge cases, risks and gaps the reviewer skipped, by id. */
   skips?: ReviewRecord["skips"];
+  /** What the agent reported about each task while building the approved slices. */
+  tasks?: Record<string, TaskRecord>;
   /** Set when the server serves the page for review. */
   review?: { bootstrap: ReviewBootstrap } | null;
 }
@@ -48,9 +52,12 @@ export function renderPlanHtml({
   file,
   answers = {},
   skips = {},
+  tasks = {},
   review = null,
 }: PageInput): string {
-  const tabs = pageTabs(plan, stage, answers, skips);
+  // Build progress shows once the slices are approved; records left from before a re-opened review wait.
+  const progress = stage.slicesApproved && hasSlices(plan) ? buildProgress(plan.slices, tasks) : null;
+  const tabs = pageTabs(plan, stage, answers, skips, progress);
   const defaultTab = defaultTabFor(plan, stage) ?? tabs[0]?.id ?? "decisions";
   const inDecisions = stage.stage === "decisions";
 
@@ -85,7 +92,7 @@ ${review ? reviewHead(review.bootstrap) : null}
 <body>
 <div class="sp-page">
 <header class="sp-head">
-<div class="sp-kicker"><span class="sp-brand">Coplan</span><span class="sp-stage sp-stage-${stage.stage}">${stage.label}</span><span class="sp-reading">${readingLabel(plan, stage, reading, answers)}</span></div>
+<div class="sp-kicker"><span class="sp-brand">Coplan</span>${stageLabel(stage, progress)}<span class="sp-reading">${readingLabel(plan, stage, reading, answers)}</span></div>
 <h1 class="sp-title">${plan.title}</h1>
 <div class="sp-summary sp-md"${target("summary", "summary", "Summary")}>${md(plan.summary)}</div>
 ${stampList.length ? html`<div class="sp-stamps">${stampList}</div>` : null}
@@ -108,6 +115,7 @@ function pageTabs(
   stage: Stage,
   answers: Record<string, DecisionAnswer>,
   skips: ReviewRecord["skips"],
+  progress: BuildProgress | null,
 ): PageTab[] {
   if (stage.stage === "decisions") {
     return [
@@ -146,9 +154,9 @@ function pageTabs(
   if (hasSlices(plan)) {
     tabs.push({
       id: "slices",
-      title: "Slices",
+      title: "Execution",
       count: plan.slices.length,
-      body: renderSlices(plan.slices),
+      body: renderSlices(plan.slices, progress),
       group: "build",
     });
   }
@@ -172,6 +180,15 @@ function reviewHead(bootstrap: ReviewBootstrap): Html {
 <script type="module" src="/client/review.js"></script>`;
 }
 
+/** The stage, or once the agent has reported on a task, how far the build has come. */
+function stageLabel(stage: Stage, progress: BuildProgress | null): Html {
+  if (!progress?.started) return html`<span class="sp-stage sp-stage-${stage.stage}">${stage.label}</span>`;
+  const { committed, total } = progress.summary;
+  return committed === total
+    ? html`<span class="sp-stage sp-stage-built">Built · all ${total} tasks committed</span>`
+    : html`<span class="sp-stage sp-stage-building">Building · ${committed} of ${total} committed</span>`;
+}
+
 function stamps(stage: Stage): Html[] {
   const ok = (text: string) => html`<span class="sp-stamp sp-stamp-ok">${text}</span>`;
   const stale = (text: string) => html`<span class="sp-stamp sp-stamp-stale">${text}</span>`;
@@ -179,27 +196,13 @@ function stamps(stage: Stage): Html[] {
   if (stage.decisionsStale) list.push(stale("Decisions changed since you answered · please review"));
   if (stage.planApproved) {
     list.push(
-      ok(
-        `Plan approved ${formatStamp(stage.planApprovedAt)}${stage.slicesSkipped ? " · building without slices" : ""}`,
-      ),
+      ok(`Plan approved ${formatTime(stage.planApprovedAt)}${stage.slicesSkipped ? " · building without slices" : ""}`),
     );
   }
   if (stage.planApprovalStale) list.push(stale("Plan changed after approval · needs re-approval"));
-  if (stage.slicesApproved) list.push(ok(`Slices approved ${formatStamp(stage.slicesApprovedAt)}`));
+  if (stage.slicesApproved) list.push(ok(`Slices approved ${formatTime(stage.slicesApprovedAt)}`));
   if (stage.slicesApprovalStale) list.push(stale("Slices changed after approval · needs re-approval"));
   return list;
-}
-
-function formatStamp(iso: string | null): string {
-  const date = new Date(iso ?? "");
-  if (Number.isNaN(date.getTime())) return iso ?? "";
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function readingLabel(plan: Plan, stage: Stage, reading: ReadingTime, answers: Record<string, DecisionAnswer>): string {

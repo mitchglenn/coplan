@@ -105,9 +105,20 @@ a {
   color: var(--text-2);
 }
 
-.sp-stage-approved {
+.sp-stage-approved,
+.sp-stage-built {
   background: var(--ok-soft);
   color: var(--ok);
+}
+
+.sp-stage-building::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .sp-reading::before {
@@ -1263,7 +1274,7 @@ li code {
   font-size: 14.5px;
 }
 
-.sp-waves {
+.sp-phases {
   display: grid;
   gap: 8px;
   margin: 0;
@@ -1274,33 +1285,33 @@ li code {
   list-style: none;
 }
 
-.sp-wave {
+.sp-phase {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   align-items: baseline;
   gap: 12px;
 }
 
-.sp-wave + .sp-wave {
+.sp-phase + .sp-phase {
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
-.sp-wave-label {
+.sp-phase-label {
   color: var(--muted);
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.sp-wave-items {
+.sp-phase-items {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
 }
 
-.sp-wave-chip {
+.sp-phase-chip {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1315,17 +1326,18 @@ li code {
   transition: border-color 120ms ease-out;
 }
 
-.sp-wave-chip:hover {
+.sp-phase-chip:hover,
+.sp-phase-card:hover {
   border-color: var(--border-strong);
 }
 
-.sp-wave-chip .sp-id {
+.sp-phase-chip .sp-id {
   top: 0;
   border-radius: 999px;
   padding: 1px 7px;
 }
 
-.sp-wave-title {
+.sp-phase-title {
   min-width: 0;
   overflow: hidden;
   color: var(--text-2);
@@ -1333,14 +1345,202 @@ li code {
   white-space: nowrap;
 }
 
-.sp-slice .sp-card-head {
-  align-items: center;
+/* The build overview: counts, one bar segment per task, and each phase's slices with their tasks. */
+
+.sp-build {
+  margin-bottom: 22px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
-.sp-layers {
+.sp-build-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 10px;
+}
+
+.sp-build-head p {
+  margin: 0;
+}
+
+.sp-build-count {
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.sp-build-count strong {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.sp-build-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sp-build-review {
+  color: var(--medium);
+  font-weight: 600;
+}
+
+.sp-build-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sp-build-bar-slice {
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sp-build-seg {
+  flex: 1 1 0;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.sp-phases-build {
+  gap: 10px;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+}
+
+.sp-phases-build .sp-phase {
+  align-items: start;
+}
+
+.sp-phases-build .sp-phase + .sp-phase {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sp-phases-build .sp-phase-label {
+  padding-top: 9px;
+}
+
+.sp-phase-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.sp-phase-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: border-color 120ms ease-out;
+}
+
+.sp-phase-card-foot {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sp-dot {
+  width: 14px;
+  height: 5px;
+  border-radius: 2px;
+}
+
+.sp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sp-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-legend .sp-node {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+}
+
+.sp-legend .sp-node svg {
+  width: 8px;
+  height: 8px;
+}
+
+.sp-legend .sp-node.sp-st-in_progress {
+  box-shadow: none;
+}
+
+.sp-legend .sp-node.sp-st-in_progress::after {
+  width: 4px;
+  height: 4px;
+}
+
+/* Status colours, shared by bar segments and dots. */
+
+.sp-build-seg.sp-st-committed,
+.sp-dot.sp-st-committed {
+  background: var(--ok);
+}
+
+.sp-build-seg.sp-st-built,
+.sp-dot.sp-st-built {
+  background: var(--medium);
+}
+
+.sp-build-seg.sp-st-in_progress,
+.sp-dot.sp-st-in_progress {
+  background: var(--accent);
+}
+
+.sp-build-seg.sp-st-ready,
+.sp-dot.sp-st-ready {
+  background: color-mix(in srgb, var(--accent-text) 35%, var(--surface-2));
+}
+
+.sp-build-seg.sp-st-waiting,
+.sp-dot.sp-st-waiting {
+  background: var(--border);
+}
+
+/* One slice. */
+
+.sp-slice .sp-card-head {
+  align-items: center;
 }
 
 .sp-layer {
@@ -1382,6 +1582,100 @@ li code {
   color: var(--text);
 }
 
+.sp-dep-done::after {
+  content: " ✓";
+  color: var(--ok);
+}
+
+.sp-slice-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: -2px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sp-slice-count b {
+  color: var(--text-2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-slice-deps {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-slice-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.sp-slice-pill-done {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.sp-slice-pill-building {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* A finished slice folds to its state line; the whole line toggles it. */
+
+.sp-slice-fold > summary {
+  margin-bottom: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sp-slice-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-slice-fold[open] > summary {
+  margin-bottom: 12px;
+}
+
+.sp-fold-toggle {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.sp-slice-fold > summary:hover .sp-fold-toggle {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.sp-slice-fold > summary:focus-visible {
+  outline: none;
+}
+
+.sp-slice-fold > summary:focus-visible .sp-fold-toggle {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sp-slice-fold[open] .sp-fold-show,
+.sp-slice-fold:not([open]) .sp-fold-hide {
+  display: none;
+}
+
 .sp-slice-goal {
   font-size: 15px;
 }
@@ -1401,16 +1695,22 @@ li code {
   font-size: 14.5px;
 }
 
-.sp-slice-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
-  gap: 22px;
+.sp-slice-acceptance {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
 
 .sp-criteria {
   margin: 4px 0 0;
   padding-left: 18px;
   font-size: 14.5px;
+  columns: 2;
+  column-gap: 32px;
+}
+
+.sp-criteria li {
+  break-inside: avoid;
 }
 
 .sp-criteria li + li {
@@ -1465,7 +1765,8 @@ li code {
   font: 650 11px/1 var(--mono);
 }
 
-.sp-task > .sp-md {
+.sp-task > .sp-md,
+.sp-task-body > .sp-md {
   margin-top: 3px;
   font-size: 14px;
 }
@@ -1478,13 +1779,193 @@ li code {
   margin-top: 6px;
 }
 
-.sp-task-foot .sp-refs {
-  margin-top: 0;
-}
-
 .sp-task-deps {
   color: var(--muted);
   font-size: 12.5px;
+}
+
+/* While building, each task hangs off a line with its status node; committed stretches go green. */
+
+.sp-tasks-build .sp-task {
+  display: grid;
+  position: relative;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 0 0 14px;
+  border-top: 0;
+}
+
+.sp-tasks-build .sp-task:last-child {
+  padding-bottom: 0;
+}
+
+.sp-tasks-build .sp-task::before {
+  content: "";
+  position: absolute;
+  top: 25px;
+  bottom: 3px;
+  left: 10px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.sp-tasks-build .sp-task:last-child::before {
+  display: none;
+}
+
+.sp-tasks-build .sp-task-committed::before {
+  background: color-mix(in srgb, var(--ok) 40%, var(--border));
+}
+
+.sp-tasks-build .sp-task-waiting .sp-task-title {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.sp-task-body {
+  min-width: 0;
+}
+
+.sp-task-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.sp-status-built {
+  color: var(--medium);
+  font-weight: 550;
+}
+
+.sp-status-working {
+  color: var(--accent-text);
+  font-weight: 550;
+}
+
+.sp-task-waiting code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font: 600 11px/1.4 var(--mono);
+}
+
+.sp-commit,
+.sp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.sp-commit {
+  border-radius: 6px;
+  font: 600 11.5px/1 var(--mono);
+}
+
+.sp-link {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.sp-link:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.sp-commit svg,
+.sp-link svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.sp-link-kind {
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The status node: a check when committed, an eye when built and waiting for review, a pulse while
+   the agent works, an open ring when ready, a dashed one while waiting. */
+
+.sp-node {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.sp-node svg {
+  width: 12px;
+  height: 12px;
+}
+
+.sp-node.sp-st-committed {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.sp-node.sp-st-built {
+  border-color: var(--medium);
+  background: var(--medium-soft);
+  color: var(--medium);
+}
+
+.sp-node.sp-st-in_progress {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.sp-node.sp-st-in_progress::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: sp-pulse 1.6s ease-in-out infinite;
+}
+
+.sp-node.sp-st-ready {
+  border-color: var(--accent-text);
+}
+
+.sp-node.sp-st-waiting {
+  border-style: dashed;
+  border-color: var(--faint);
+  background: transparent;
+}
+
+@keyframes sp-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-node.sp-st-in_progress::after {
+    animation: none;
+  }
 }
 
 /* --- footer --- */
@@ -1525,7 +2006,6 @@ li code {
   }
 
   .sp-split,
-  .sp-slice-cols,
   .sp-rules {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1543,9 +2023,17 @@ li code {
     padding: 16px;
   }
 
-  .sp-wave {
+  .sp-phase {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
+  }
+
+  .sp-phases-build .sp-phase-label {
+    padding-top: 0;
+  }
+
+  .sp-criteria {
+    columns: 1;
   }
 }
 

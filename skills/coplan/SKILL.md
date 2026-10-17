@@ -19,6 +19,7 @@ Get them from the CLI, which is the single source of truth:
 - `coplan guide decisions` before writing the first version of a plan
 - `coplan guide plan` and `coplan guide tabs` once the decisions are answered
 - `coplan guide slices` after the reviewer approves the plan
+- `coplan guide build` once the slices are approved and the user asks you to build
 
 Every command prints a `next_step`; follow it.
 If the `coplan` command is not found, stop and ask the user to install Coplan: https://github.com/mitchglenn/coplan#install

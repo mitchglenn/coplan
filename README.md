@@ -52,6 +52,10 @@ From there:
    The agent revises the plan, and the page updates by itself.
 5. **You approve, and choose what comes next.**
    Have the agent break the plan into vertical slices and tasks that can be synced to systems like Jira, or skip that and build it now.
+6. **You follow the build.**
+   Once you approve the slices and ask the agent to build, it reports every task as it goes.
+   The Execution tab shows what it is building, what waits for your review, and each task's commit and pull request.
+   You review each task in chat before it is committed.
 
 While you review, the agent waits for you: the review page is the conversation until you approve or end the review.
 Plans live in your project under `.coplan/<name>/`.
@@ -67,11 +71,11 @@ That is why any agent that can run a command can use Coplan, with no special int
 
 Next to each `plan.json`, Coplan keeps:
 
-| File               | Writer | Holds                                                                                                      |
-| ------------------ | ------ | ---------------------------------------------------------------------------------------------------------- |
-| `plan.json`        | Agent  | The plan: title, summary, key decisions, tabs, open questions and slices                                   |
-| `plan.review.json` | Server | Your decision answers, approvals and skips, feedback the agent has not picked up yet, and the conversation |
-| `plan.html`        | Coplan | The rendered plan: one self-contained page that works offline                                              |
+| File               | Writer | Holds                                                                                                                      |
+| ------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `plan.json`        | Agent  | The plan: title, summary, key decisions, tabs, open questions and slices                                                   |
+| `plan.review.json` | Server | Your decision answers, approvals and skips, feedback the agent has not picked up yet, the conversation, and build progress |
+| `plan.html`        | Coplan | The rendered plan: one self-contained page that works offline                                                              |
 
 ## Reference
 
@@ -87,8 +91,8 @@ A plan is built from typed tabs, so every plan has the same shape and every item
 - `gaps`: what the plan does not cover yet.
 - `custom`: Markdown, callouts, tables, code, and HTML blocks, from static figures to interactive UI mocks.
 
-Open questions get their own tab, and so do slices once you choose to slice an approved plan.
-Slices are grouped into waves: slices in one wave do not depend on each other and can be built in parallel.
+Open questions get their own tab, and slices get the Execution tab once you choose to slice an approved plan.
+Slices are grouped into phases: slices in one phase do not depend on each other and can be built in parallel.
 The full field reference is `coplan guide tabs`.
 
 ### Stages
@@ -102,25 +106,33 @@ A plan's stage is derived from the plan and the approvals in `plan.review.json`,
 | `plan_review`   | The plan is under review                   | Comment, answer questions, approve the plan |
 | `slicing`       | Plan approved; the agent is writing slices | Comment                                     |
 | `slices_review` | Slices and tasks are under review          | Comment, approve the slices                 |
-| `approved`      | Approved to build; the review is closed    | Read                                        |
+| `approved`      | Approved to build; the review is closed    | Read, and follow the build                  |
 
 A plan reaches `approved` when its slices are approved, or when you approve the plan to build now.
 You cannot approve while open questions remain: answer them, and the agent folds your answers into the plan first.
 
+### Building
+
+While it builds approved slices, the agent reports each task with `coplan task`: when it starts, when the work is built and waits for your review, and the commit and pull request once you accept it.
+Coplan records the reports in `plan.review.json`, never in `plan.json`, so the slices approval stays intact, and the open page updates with each one.
+A task's status comes from those reports and from what it depends on: waiting, ready, in progress, built, or committed.
+`coplan guide build` is the loop the agent follows.
+
 ### CLI
 
-| Command                     | What it does                                                                  |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| `coplan`                    | Workflow, rules, commands and open reviews                                    |
-| `coplan setup`              | Install the skill for the agents on this machine (`--remove` to take it out)  |
-| `coplan guide [topic]`      | Authoring guidance: `workflow`, `decisions`, `plan`, `tabs`, `slices`         |
-| `coplan new <slug>`         | Scaffold `.coplan/<slug>/plan.json` with a first decision to fill in          |
-| `coplan render <plan.json>` | Validate, write `plan.html`, report errors, warnings and reading time         |
-| `coplan open <plan.json>`   | Render, start the server if needed, open the review (`--no-open`, `--reopen`) |
-| `coplan poll <plan.json>`   | Wait up to 8 minutes for feedback, else answer `waiting`                      |
-| `coplan status <plan.json>` | Stage, approvals and undelivered feedback                                     |
-| `coplan end <plan.json>`    | End the review as the agent                                                   |
-| `coplan stop`               | Stop the background server                                                    |
+| Command                                   | What it does                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| `coplan`                                  | Workflow, rules, commands and open reviews                                    |
+| `coplan setup`                            | Install the skill for the agents on this machine (`--remove` to take it out)  |
+| `coplan guide [topic]`                    | Guidance: `workflow`, `decisions`, `plan`, `tabs`, `slices`, `build`          |
+| `coplan new <slug>`                       | Scaffold `.coplan/<slug>/plan.json` with a first decision to fill in          |
+| `coplan render <plan.json>`               | Validate, write `plan.html`, report errors, warnings and reading time         |
+| `coplan open <plan.json>`                 | Render, start the server if needed, open the review (`--no-open`, `--reopen`) |
+| `coplan poll <plan.json>`                 | Wait up to 8 minutes for feedback, else answer `waiting`                      |
+| `coplan status <plan.json>`               | Stage, approvals, undelivered feedback, and where the build stands            |
+| `coplan task <action> <plan.json> <task>` | Report a step of the build: `start`, `built`, `commit` or `link`              |
+| `coplan end <plan.json>`                  | End the review as the agent                                                   |
+| `coplan stop`                             | Stop the background server                                                    |
 
 `coplan poll` also takes `--reply <text>` or `--reply-file <path or ->` to answer the reviewer first, and `--timeout <seconds>` to wait less.
 

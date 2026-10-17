@@ -12,7 +12,7 @@ export const WORKFLOW = [
   '5. Write the plan from the answers: run `coplan guide plan` and `coplan guide tabs`, add `tabs`, render, then `coplan poll <plan.json> --reply "<what you wrote>"`.',
   "6. On feedback: edit plan.json, render, and poll with a reply. Repeat until the reviewer approves the plan.",
   "7. Approving the plan, the reviewer chooses what comes next, and the poll says which. To slice it: run `coplan guide slices`, add `slices` without touching the approved plan, render, and poll with a reply; iterate until the reviewer approves the slices. To build now: the review is closed, so start building from the approved plan - no slices.",
-  "8. When the slices are approved the review is complete. Report back in chat; build only when the user asks, slice by slice in wave order.",
+  "8. When the slices are approved the review is complete. Report back in chat; build only when the user asks, slice by slice in phase order, reporting each task as `coplan guide build` describes.",
 ];
 
 /** How long one `coplan poll` waits before answering `waiting`: inside the 10 minutes agents' shells allow. */
@@ -162,13 +162,33 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "The first slice is the thinnest path through the whole system, even if it is ugly. Later slices widen it: validation, edge cases, permissions, polish.",
       "A slice that touches one layer is horizontal. Coplan warns on it; either merge it into the slice that needs it or justify it (a migration that must ship first, say).",
       "Map the plan onto the slices: every flow, edge case and security mitigation you intend to build should land in some slice's acceptance or tasks. Edge cases, risks and gaps the reviewer skipped (the poll's `skipped` list) need no work at all. What does not land is out of scope or a gap - say which.",
-      "depends_on between slices defines waves; slices in one wave can be built in parallel. Keep the graph shallow.",
+      "depends_on between slices defines phases; slices in one phase can be built in parallel. Keep the graph shallow.",
       "Tasks name the files they touch when you know them, a layer, and a relative size S/M/L. A task is something one engineer finishes in a sitting or two.",
     ],
     shape: {
       slices:
         "[{ id: 'S1', title, goal, demo, layers?: ['db','api','ui'], depends_on?: [slice ids], acceptance: [Markdown], tasks: [{ id: 'S1.T1', title, detail?, layer?, size?: S|M|L, files?: [path], depends_on?: [task ids] }], notes? }]",
     },
+  }),
+
+  build: () => ({
+    purpose:
+      "Build the approved slices one task at a time and report each step with `coplan task`, so the plan page shows the build as it happens. The reviewer follows it on the Execution tab and reviews every task in chat before it is committed.",
+    loop: [
+      "1. Build only when the user asks, slice by slice in phase order. `coplan status <plan.json>` lists what is in progress, what waits for review and what is ready next.",
+      "2. Before touching a task, run `coplan task start <plan.json> <task>`.",
+      "3. Build that task alone and run its tests, then run `coplan task built <plan.json> <task>`.",
+      "4. Stop and ask the user in chat to review it: say what changed and how to check it. Do not commit before they accept. If they ask for changes, run `coplan task start` again, rework it and report it built again.",
+      "5. Once they accept, commit that task's changes alone in one commit and run `coplan task commit <plan.json> <task> <sha>`.",
+      "6. Open a pull request for that task alone and run `coplan task link <plan.json> <task> --pr <url>`. When the task depends on one that is not merged yet, base its branch on that task's branch so the pull requests stack.",
+    ],
+    rules: [
+      "Report every step: the page is only as accurate as what you report, and every `coplan task` reply names the next step.",
+      "One task, one commit, one pull request. A follow-up commit after rework is reported with `coplan task commit` again.",
+      "If a task already has a Jira issue, link it with `coplan task link <plan.json> <task> --jira <url>`. Do not create issues.",
+      "To take back a SHA reported by mistake, run `coplan task commit <plan.json> <task> --remove <sha>`.",
+      "Progress lives in the review record, which only the server writes; never edit it or plan.json to record progress.",
+    ],
   }),
 };
 
@@ -180,9 +200,10 @@ export function guideTopics() {
       plan: "What goes in the plan phase: reading budget, which tabs to use, how to write items and questions",
       tabs: "The plan.json reference: every field of every tab kind, with a worked flow",
       slices: "Vertical slicing after plan approval: rules and the slices/tasks shape",
+      build: "Building approved slices: the task-by-task loop and how to report each step",
     },
     help: [
-      "Run `coplan guide <topic>`. Read workflow and decisions first; plan and tabs once the decisions are answered; slices after the plan is approved.",
+      "Run `coplan guide <topic>`. Read workflow and decisions first; plan and tabs once the decisions are answered; slices after the plan is approved; build once the slices are approved and the user asks you to build.",
     ],
   };
 }

@@ -68,6 +68,7 @@ export function renderLoaded(loaded: LoadedPlan, file: string, bootstrap?: Revie
     reading: loaded.reading,
     answers: loaded.review.decisions?.answers ?? {},
     skips: loaded.review.skips,
+    tasks: loaded.review.build?.tasks,
     file,
     review: bootstrap ? { bootstrap } : null,
   });

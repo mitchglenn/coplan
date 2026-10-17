@@ -38,3 +38,16 @@ export function plainText(markdown: string): string {
 }
 
 export const plural = (count: number, noun: string): string => `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+/** A moment as the reviewer reads it, such as "Oct 16, 2026, 6:31 PM"; `year: false` drops the year. */
+export function formatTime(iso: string | null, { year = true }: { year?: boolean } = {}): string {
+  const date = new Date(iso ?? "");
+  if (Number.isNaN(date.getTime())) return iso ?? "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(year ? { year: "numeric" } : {}),
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

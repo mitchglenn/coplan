@@ -6,9 +6,12 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { renderToDisk } from "../engine.ts";
+import { buildProgress } from "../plan/build.ts";
+import { hasSlices } from "../plan/stage.ts";
 import { DESCRIPTION, guideTopic, guideTopics, HOW_TO_POLL, RULES, WORKFLOW } from "../guide.ts";
 import { APP, buildId, serverPort, stateDir } from "../paths.ts";
 import { PLACEHOLDER } from "../plan/validate.ts";
+import type { BuildSummary, TaskResponse, TaskUpdate } from "../protocol.ts";
 import { readReview } from "../review-store.ts";
 import { CliError, display, parseArgs, planArg } from "./args.ts";
 import { baseUrl, ensureServer, health, request } from "./server-client.ts";
@@ -31,14 +34,16 @@ export async function home(): Promise<Output> {
     ...(openReviews.length ? { open_reviews: openReviews } : {}),
     commands: {
       "coplan setup [--remove]": "Install the skill for Claude Code, Codex and other agents on this machine",
-      "coplan guide [topic]": "Authoring guidance: workflow, decisions, plan, tabs, slices",
+      "coplan guide [topic]": "Guidance: workflow, decisions, plan, tabs, slices, build",
       "coplan new <slug> [--title <title>] [--dir <dir>]": "Scaffold .coplan/<slug>/plan.json",
       "coplan render <plan.json>":
         "Validate and write the portable plan.html; reports errors, warnings and reading time",
       "coplan open <plan.json> [--no-open] [--reopen]": "Start or resume the review in the browser",
       "coplan poll <plan.json> [--reply <text> | --reply-file <path|->] [--timeout <seconds>]":
         "Wait for the reviewer's feedback or approval; answers `waiting` if none comes in time",
-      "coplan status <plan.json>": "Stage, approvals, and undelivered feedback",
+      "coplan status <plan.json>": "Stage, approvals, undelivered feedback, and where the build stands",
+      "coplan task start|built|commit|link <plan.json> <task>":
+        "Report a step of building the approved slices; see `coplan guide build`",
       "coplan end <plan.json>": "End the review as the agent",
       "coplan stop": "Stop the background server",
     },
@@ -141,11 +146,98 @@ export async function status(args: string[]): Promise<Output> {
   const file = await planArg(parseArgs(args).positional, "status");
   const result = await renderToDisk(file);
   const review = await readReview(file);
+  const building = result.ok && result.stage.slicesApproved && hasSlices(result.plan);
   return {
     ...renderSummary(file, result),
     approvals: review.approvals,
     undelivered_feedback: review.queue.reduce((sum, batch) => sum + batch.items.length, 0),
+    ...(building ? { build: buildProgress(result.plan.slices ?? [], review.build?.tasks).summary } : {}),
   };
+}
+
+const TASK_ACTIONS = ["start", "built", "commit", "link"] as const;
+type TaskAction = (typeof TASK_ACTIONS)[number];
+
+/**
+ * `coplan task <action> <plan.json> <task>`: the agent reports a step of building the approved
+ * slices. The server records it and refreshes the plan page; the reply says what to do next.
+ */
+export async function task(args: string[]): Promise<Output> {
+  const { positional, flags } = parseArgs(args, ["pr", "jira", "remove"]);
+  const [action, plan, taskId, sha] = positional;
+  const usage = "Run `coplan task start|built|commit|link <plan.json> <task>`; `coplan guide build` explains each";
+  if (!TASK_ACTIONS.includes(action as TaskAction)) {
+    throw new CliError(`task needs an action: ${TASK_ACTIONS.join(", ")}`, [usage]);
+  }
+  const file = await planArg(plan ? [plan] : [], `task ${action}`);
+  if (!taskId) throw new CliError(`task ${action} needs a task id, such as S1.T2`, [usage]);
+  const update = taskUpdate(action as TaskAction, sha, flags);
+
+  const url = await ensureServer();
+  const { json } = await request<TaskResponse>("POST", `${url}/api/task`, {
+    body: { file, task: taskId, ...update },
+  });
+  if (!json.ok) throw new CliError(json.error ?? "the server refused the report", [usage]);
+  return {
+    file: display(file),
+    task: json.task,
+    status: json.status,
+    ...(json.warnings.length ? { warnings: json.warnings } : {}),
+    build: json.build,
+    next_step: taskNextStep(display(file), json.task, update, json.build),
+  };
+}
+
+function taskUpdate(action: TaskAction, sha: string | undefined, flags: Record<string, string | true>): TaskUpdate {
+  const value = (name: string) => (typeof flags[name] === "string" ? (flags[name] as string) : undefined);
+  switch (action) {
+    case "start":
+      return { action };
+    case "built":
+      return { action };
+    case "commit": {
+      const removing = value("remove");
+      const commit = removing ?? sha;
+      if (!commit)
+        throw new CliError("task commit needs the commit SHA", ["Run `coplan task commit <plan.json> <task> <sha>`"]);
+      return { action, sha: commit, remove: removing !== undefined, pr: value("pr") };
+    }
+    case "link":
+      if (value("pr") === undefined && value("jira") === undefined) {
+        throw new CliError("task link needs --pr <url> or --jira <url>");
+      }
+      return { action, pr: value("pr"), jira: value("jira") };
+  }
+}
+
+/** What the agent does after a report: the build loop of `coplan guide build`, one step at a time. */
+function taskNextStep(f: string, id: string, update: TaskUpdate, build: BuildSummary): string {
+  switch (update.action) {
+    case "start":
+      return `Build ${id} now - only this task - and run its tests. When it works, run \`coplan task built ${f} ${id}\`.`;
+    case "built":
+      return `Stop and ask the user in chat to review ${id}: say what changed and how to check it. Do not commit until they accept. If they ask for changes, run \`coplan task start ${f} ${id}\`, rework it and report it built again. Once they accept, commit this task's changes alone in one commit and run \`coplan task commit ${f} ${id} <sha>\`.`;
+    case "commit":
+      if (update.remove) return `Removed ${update.sha} from ${id}.`;
+      if (!update.pr) {
+        return `Push the branch and open a pull request for ${id} alone. If it depends on a task that is not merged yet, base its branch on that task's branch so the pull requests stack. Then run \`coplan task link ${f} ${id} --pr <url>\`.`;
+      }
+      return afterTask(f, build);
+    case "link":
+      return update.pr ? afterTask(f, build) : `Linked ${id}.`;
+  }
+}
+
+function afterTask(f: string, build: BuildSummary): string {
+  if (build.committed === build.total) return "Every task is committed. Tell the user the build is complete.";
+  if (build.awaiting_review.length) {
+    return `${build.awaiting_review.join(", ")} still ${build.awaiting_review.length === 1 ? "waits" : "wait"} for the user's review; ask them before going on.`;
+  }
+  if (build.in_progress.length) return `Carry on with ${build.in_progress[0]}, which is in progress.`;
+  const next = build.next[0];
+  return next
+    ? `Next ready task: ${next}. If the user asked you to keep building, run \`coplan task start ${f} ${next}\`; otherwise tell them it is next.`
+    : "No task is ready: the remaining ones wait on dependencies. Tell the user where the build stands.";
 }
 
 export async function end(args: string[]): Promise<Output> {

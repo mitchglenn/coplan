@@ -1,4 +1,4 @@
-// Measurements of a plan: how long it takes to read, how its slices group into waves, and how many
+// Measurements of a plan: how long it takes to read, how its slices group into phases, and how many
 // items each tab holds.
 
 import {
@@ -105,25 +105,25 @@ function figureCount(tabs: Tab[]): number {
 }
 
 /**
- * Group slices into waves: every slice in a wave depends only on slices in earlier waves, so the
- * slices within one wave can be built in parallel.
+ * Group slices into phases: every slice in a phase depends only on slices in earlier phases, so the
+ * slices within one phase can be built in parallel.
  */
-export function sliceWaves(slices: Slice[]): string[][] {
+export function slicePhases(slices: Slice[]): string[][] {
   const remaining = new Map(slices.map((slice) => [slice.id, new Set(slice.depends_on)]));
   const done = new Set<string>();
-  const waves: string[][] = [];
+  const phases: string[][] = [];
   while (remaining.size) {
-    const wave = [...remaining]
+    const phase = [...remaining]
       .filter(([, dependencies]) => [...dependencies].every((d) => done.has(d)))
       .map(([id]) => id);
-    if (!wave.length) break; // a cycle; validation reports it
-    for (const id of wave) {
+    if (!phase.length) break; // a cycle; validation reports it
+    for (const id of phase) {
       remaining.delete(id);
       done.add(id);
     }
-    waves.push(wave);
+    phases.push(phase);
   }
-  return waves;
+  return phases;
 }
 
 /** How many items a tab holds, for its badge; null for tabs that are not lists. */

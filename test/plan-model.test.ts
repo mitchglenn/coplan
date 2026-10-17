@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { budgetWarnings, readingTime, sliceWaves } from "../src/plan/metrics.ts";
+import { budgetWarnings, readingTime, slicePhases } from "../src/plan/metrics.ts";
 import {
   checkPhaseRules,
   decisionsHash,
@@ -87,9 +87,9 @@ test("tabs need submitted decisions and slices need an approved plan", () => {
   assert.deepEqual(checkPhaseRules(plan, submitted), []);
 });
 
-test("waves group slices that can be built in parallel", () => {
+test("phases group slices that can be built in parallel", () => {
   const plan = valid({ ...examplePlan(), slices: structuredClone(SLICES) });
-  assert.deepEqual(sliceWaves(plan.slices ?? []), [["S1"], ["S2", "S3"]]);
+  assert.deepEqual(slicePhases(plan.slices ?? []), [["S1"], ["S2", "S3"]]);
 });
 
 test("reading time is reported and budgets warn only once a plan exists", () => {

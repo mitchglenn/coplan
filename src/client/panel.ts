@@ -244,7 +244,10 @@ function renderClosing(): void {
     ? ["Review ended", "Return to your agent to continue. Comments you had not sent are kept on this page."]
     : review.stage?.slicesSkipped
       ? ["Approved · building now", "The plan is approved without slices. The agent is building it now."]
-      : ["Approved · ready to build", "The plan and its slices are approved. The agent takes it from here."];
+      : [
+          "Approved · ready to build",
+          "The plan and its slices are approved. Follow the build on the Execution tab; it updates as the agent reports each task.",
+        ];
   ui.closing.replaceChildren(el("strong", { text: title }), el("span", { text: detail }));
   ui.closing.classList.toggle("spr-closing-approved", approved);
 }

@@ -154,7 +154,52 @@ export interface ReviewRecord {
   skips: Record<string, { at: string }>;
   queue: FeedbackBatch[];
   history: HistoryEntry[];
+  /** What the agent reported while building the approved slices. Absent until the first report. */
+  build?: { tasks: Record<string, TaskRecord> };
 }
+
+// --- build progress: what the agent reports through `coplan task` ---
+
+export interface Link {
+  url: string;
+  at: string;
+}
+
+/** What the agent reported about one task. Its status is derived from it, never stored. */
+export interface TaskRecord {
+  started_at?: string;
+  built_at?: string;
+  commits?: { sha: string; at: string }[];
+  pr?: Link;
+  jira?: Link;
+}
+
+export type TaskStatus = "waiting" | "ready" | "in_progress" | "built" | "committed";
+
+/** One report, as `coplan task` sends it. */
+export type TaskUpdate =
+  | { action: "start" }
+  | { action: "built" }
+  | { action: "commit"; sha: string; remove?: boolean; pr?: string }
+  | { action: "link"; pr?: string; jira?: string };
+
+export type TaskRequest = TaskUpdate & { file: string; task: string };
+
+/** Where the build stands, for the agent: what it is on, what waits for the reviewer, what is next. */
+export interface BuildSummary {
+  committed: number;
+  total: number;
+  in_progress: string[];
+  awaiting_review: string[];
+  /** Ready tasks, in phase order. */
+  next: string[];
+  /** Records for task ids the approved slices no longer have. */
+  orphaned: string[];
+}
+
+export type TaskResponse =
+  | { ok: true; task: string; status: TaskStatus; warnings: string[]; build: BuildSummary }
+  | { ok: false; error: string };
 
 // --- browser → server ---
 
