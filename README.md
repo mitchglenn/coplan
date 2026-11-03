@@ -43,7 +43,9 @@ Versions follow [semantic versioning](https://semver.org); until 1.0, a minor re
 A breaking change is one that makes an existing plan.json fail validation, re-opens its approvals, or changes a command an agent relies on.
 
 The plugin is offered an update only when a new version is released.
-A clone follows `main`, which can be ahead of the latest release; run `git checkout v0.1.0` to stay on a release instead.
+A clone follows `main`, which can be ahead of the latest release.
+To stay on a release instead, check out its tag, such as `git fetch --tags && git checkout v0.1.0`, and upgrade by checking out the next one the same way: `git pull` works only on `main`.
+`git checkout main` goes back to following it.
 
 ## Use it
 
