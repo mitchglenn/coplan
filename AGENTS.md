@@ -10,7 +10,21 @@ This file owns the architecture and the invariants that are easy to break.
 npm run check      # lint (oxlint), format check, both typechecks, tests
 node --test test/server.test.ts
 npm run build      # compile to dist/ for publishing; a checkout never needs it
+npm run release -- <patch|minor|major|X.Y.Z> --notes <file>
 ```
+
+## Releases
+
+The version lives in `package.json`, `package-lock.json` and `.claude-plugin/plugin.json`, and `test/release.test.ts` fails if they differ.
+Claude Code offers plugin users an update only when the plugin manifest's version changes, so commits on `main` reach them at the next release.
+`npm run release` (`scripts/release.ts`) bumps all three from a clean, up-to-date `main`, runs `npm run check`, commits `Release vX.Y.Z`, and pushes `main` with an annotated tag whose message is the notes file.
+The Release workflow checks the tag against `package.json`, runs the checks, and publishes the GitHub Release from the tag's message.
+There is no CHANGELOG.md: the Releases page is the changelog.
+
+Release notes are written at release time for the people using Coplan, so commit messages follow no convention.
+Draft them from the commits since the last release, group them under headings such as Breaking, Added and Fixed, and say for each breaking change what a user has to do.
+Before 1.0, a release with a breaking change bumps the minor version and any other release bumps the patch.
+Breaking means an existing plan.json fails validation or loses its approvals, or a command, flag or output an agent relies on changes.
 
 TypeScript on Node 24+.
 A checkout runs the `.ts` source directly through Node's type stripping, so there is no build step while developing: `bin/coplan.js` runs `src/` when it exists and `dist/` in a published package.

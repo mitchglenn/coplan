@@ -19,6 +19,8 @@ Install the plugin, which brings the skill and the command together:
 /plugin install coplan@coplan
 ```
 
+To upgrade, run `/plugin marketplace update coplan`, or turn on auto-update for the marketplace in `/plugin`.
+
 ### Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and Amp
 
 Install the command from a clone you keep, then let it install the skill for the agents it finds:
@@ -32,6 +34,16 @@ coplan setup
 `coplan setup` writes the skill to `~/.agents/skills` and to `~/.claude/skills` when Claude Code is installed, so this also works for Claude Code without the plugin.
 To upgrade, run `git pull` in the clone and `coplan setup` again.
 `coplan setup --remove` takes the skill out.
+
+### Versions
+
+`coplan --version` prints the version you have.
+Each release is listed with its notes on the [Releases](https://github.com/mitchglenn/coplan/releases) page.
+Versions follow [semantic versioning](https://semver.org); until 1.0, a minor release (0.1 to 0.2) may break plans or commands, and a patch release (0.1.0 to 0.1.1) never does.
+A breaking change is one that makes an existing plan.json fail validation, re-opens its approvals, or changes a command an agent relies on.
+
+The plugin is offered an update only when a new version is released.
+A clone follows `main`, which can be ahead of the latest release; run `git checkout v0.1.0` to stay on a release instead.
 
 ## Use it
 
@@ -179,7 +191,7 @@ npm test
 npm run build       # compile to dist/, which is what an installed package runs
 ```
 
-`AGENTS.md` describes the architecture.
+`AGENTS.md` describes the architecture and how releases are cut.
 
 ## Background
 

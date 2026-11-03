@@ -36,6 +36,7 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "build": "node scripts/build.ts",
+    "release": "node scripts/release.ts",
     "prepublishOnly": "npm run check && npm run build"
   },
   "engines": {

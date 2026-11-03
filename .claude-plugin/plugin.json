@@ -1,5 +1,6 @@
 {
   "name": "coplan",
+  "version": "0.1.0",
   "description": "Structured, reviewable engineering plans: your agent writes the plan, you review and approve it in the browser before any code is written.",
   "author": { "name": "Mitch Glenn" },
   "homepage": "https://github.com/mitchglenn/coplan",
