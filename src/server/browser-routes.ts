@@ -108,7 +108,9 @@ export function browserRoutes(app: App): Route[] {
       const loaded = await validPlan(session);
       const record = (loaded.plan.tabs ?? []).flatMap(skippableRecords).find((r) => r.id === body.id);
       if (!record || typeof body.skip !== "boolean") {
-        throw new HttpError(400, { error: "only edge cases, security risks and gaps can be skipped" });
+        throw new HttpError(400, {
+          error: "only edge cases, security risks, performance concerns and gaps can be skipped",
+        });
       }
       sendJson(res, 200, { ok: true, skips: await app.reviews.setSkip(session, record.id, body.skip) });
     }),

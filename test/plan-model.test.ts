@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { budgetWarnings, readingTime, slicePhases } from "../src/plan/metrics.ts";
+import { budgetWarnings, readingTime, skippableRecords, slicePhases } from "../src/plan/metrics.ts";
 import {
   checkPhaseRules,
   decisionsHash,
@@ -9,7 +9,7 @@ import {
   slicesHash,
   type ReviewCheckpoints,
 } from "../src/plan/stage.ts";
-import { decisionsOnlyPlan, examplePlan, SLICES, validPlan as valid } from "./helpers.ts";
+import { decisionsOnlyPlan, examplePlan, planWithPerformance, SLICES, validPlan as valid } from "./helpers.ts";
 
 test("stage moves through decisions, both approvals, and re-opens when signed-off content changes", () => {
   const start = valid(decisionsOnlyPlan());
@@ -115,4 +115,11 @@ test("a lightweight plan reads against its own budget, and plans without the fla
   const before = valid(examplePlan());
   assert.equal("lightweight" in before, false);
   assert.notEqual(planPartHash(plan), planPartHash(before), "turning it on re-opens the plan's approval");
+});
+
+test("the reviewer can skip performance concerns, like edge cases, risks and gaps", () => {
+  const plan = valid(planWithPerformance());
+  const skippable = (plan.tabs ?? []).flatMap(skippableRecords).map((record) => record.id);
+  assert.ok(["P1", "P2"].every((id) => skippable.includes(id)));
+  assert.ok(skippable.includes("E1") && skippable.includes("R1") && skippable.includes("G1"));
 });

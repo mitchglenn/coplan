@@ -211,6 +211,12 @@ function checkTabs(report: Report, plan: Plan, claim: (id: string, path: string)
     const records = recordsOf(tab);
     records?.list.forEach((record, i) => record.id && claim(record.id, `${path}.${records.field}[${i}].id`));
     if (tab.kind === "flows") tab.flows.forEach((flow, i) => checkFlow(report, flow, `${path}.flows[${i}]`));
+    if (plan.lightweight && tab.kind === "performance" && tab.concerns.length > LIGHTWEIGHT.concernsMax) {
+      report.warn(
+        `${path}.concerns`,
+        `has ${tab.concerns.length}; a lightweight plan keeps ${LIGHTWEIGHT.concernsMax} performance concerns at most, the ones that change the build`,
+      );
+    }
   });
 
   const overview = kinds.get("overview");
@@ -239,6 +245,8 @@ function recordsOf(tab: Tab): { field: string; list: { id?: string }[] } | null 
       return { field: "cases", list: tab.cases };
     case "security":
       return { field: "risks", list: tab.risks };
+    case "performance":
+      return { field: "concerns", list: tab.concerns };
     case "gaps":
       return { field: "gaps", list: tab.gaps };
     case "custom":

@@ -1,6 +1,6 @@
-// Skipping edge cases, security risks and gaps. A skip is saved the moment it is pressed. It marks
-// the plan rather than joining the feedback, so it never blocks approval and is still there when
-// the reviewer comes back.
+// Skipping edge cases, security risks, performance concerns and gaps. A skip is saved the moment
+// it is pressed. It marks the plan rather than joining the feedback, so it never blocks approval
+// and is still there when the reviewer comes back.
 
 import { el, ICONS, post, required } from "./dom.ts";
 import { setStatus } from "./panel.ts";

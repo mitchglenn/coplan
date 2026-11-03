@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { validatePlan, type ValidationResult } from "../src/plan/validate.ts";
-import { examplePlan, SLICES } from "./helpers.ts";
+import { examplePlan, planWithPerformance, SLICES } from "./helpers.ts";
 
 const paths = (result: ValidationResult) => result.errors.map((e) => e.path);
 
@@ -29,6 +29,22 @@ test("ids share one namespace across the plan", () => {
   const result = validatePlan(plan);
   assert.equal(result.ok, false);
   assert.match(result.errors[0].message, /duplicate id "E1"; also used at tabs\[4\]\.cases\[0\]\.id/);
+});
+
+test("a performance tab is optional, and its concerns are typed and share the id namespace", () => {
+  const without = validatePlan(examplePlan());
+  assert.equal(without.ok, true);
+  assert.ok(!without.warnings.some((w) => /performance/i.test(w.message)), "leaving it out is not a warning");
+
+  const plan = planWithPerformance();
+  assert.deepEqual(validatePlan(plan).errors, []);
+
+  plan.tabs[6].concerns[0].category = "speed";
+  assert.deepEqual(paths(validatePlan(plan)), ["tabs[6].concerns[0].category"]);
+  plan.tabs[6].concerns[0].category = "concurrency";
+
+  plan.tabs[6].concerns[1].id = "E1";
+  assert.match(validatePlan(plan).errors[0]?.message ?? "", /duplicate id "E1"/);
 });
 
 test("a plan needs an overview tab and warns without gaps", () => {
@@ -75,6 +91,29 @@ test("a lightweight plan asks 3-5 decisions, needs no gaps tab, and keeps its sl
   assert.deepEqual(
     validatePlan(plan).warnings.map((w) => w.path),
     ["slices[0].tasks", "slices"],
+  );
+});
+
+test("a lightweight plan may carry a short performance tab", () => {
+  const plan = planWithPerformance();
+  plan.lightweight = true;
+  plan.decisions = plan.decisions.slice(0, 4);
+  assert.deepEqual(validatePlan(plan).warnings, [], "two concerns fit a lightweight plan");
+
+  const concern = plan.tabs[6].concerns[0];
+  plan.tabs[6].concerns.push({ ...concern, id: "P3" }, { ...concern, id: "P4" });
+  assert.deepEqual(
+    validatePlan(plan).warnings.map((w) => [w.path, w.message]),
+    [
+      [
+        "tabs[6].concerns",
+        "has 4; a lightweight plan keeps 3 performance concerns at most, the ones that change the build",
+      ],
+    ],
+  );
+  assert.deepEqual(
+    validatePlan({ ...plan, lightweight: undefined }).warnings.map((w) => w.path),
+    ["decisions"],
   );
 });
 

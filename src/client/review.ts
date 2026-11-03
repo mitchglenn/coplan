@@ -9,7 +9,7 @@
  *   comments.ts    commenting on any part of the plan
  *   decisions.ts   the key-decisions questionnaire
  *   questions.ts   open questions
- *   skips.ts       skipping edge cases, risks and gaps
+ *   skips.ts       skipping edge cases, risks, performance concerns and gaps
  *   connection.ts  live updates from the server
  */
 

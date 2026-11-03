@@ -34,6 +34,40 @@ export function submittedReview(plan: Plan, answers: Record<string, DecisionAnsw
   return { decisions: { hash: decisionsHash(plan), at: "2026-09-23T00:00:00Z", answers }, approvals: {} };
 }
 
+/** A performance tab for the example plan; plans carry one only when scale matters, so the fixture has none. */
+export const PERFORMANCE_TAB = {
+  id: "performance",
+  title: "Performance",
+  kind: "performance",
+  concerns: [
+    {
+      id: "P1",
+      title: "Two admins fill the last seat at once",
+      priority: "high",
+      category: "concurrency",
+      issue: "Both requests read one free seat and both insert an invitation.",
+      approach:
+        "Reserve the seat with a conditional `UPDATE ... WHERE seats_used < seat_limit` in the same transaction.",
+      tradeoffs: ["A failed reservation surfaces as a seat-limit error, not a retry"],
+    },
+    {
+      id: "P2",
+      title: "Pending invitations list scans the whole table",
+      priority: "low",
+      category: "queries",
+      issue: "The members page filters invitations by workspace and status on every load.",
+      approach: "Add an index on `(workspace_id, status)`.",
+    },
+  ],
+};
+
+/** The example plan with the performance tab, placed before gaps as the guide orders it. */
+export function planWithPerformance(): any {
+  const plan = examplePlan();
+  plan.tabs.splice(plan.tabs.length - 1, 0, structuredClone(PERFORMANCE_TAB));
+  return plan;
+}
+
 export const SLICES = [
   {
     id: "S1",

@@ -4,6 +4,7 @@
 import {
   BUDGET_MINUTES,
   type Budget,
+  type Concern,
   type EdgeCase,
   type Gap,
   LIGHTWEIGHT,
@@ -147,6 +148,8 @@ export function tabCount(tab: Tab): number | null {
       return tab.cases.length;
     case "security":
       return tab.risks.length;
+    case "performance":
+      return tab.concerns.length;
     case "gaps":
       return tab.gaps.length;
     default:
@@ -154,10 +157,11 @@ export function tabCount(tab: Tab): number | null {
   }
 }
 
-/** The records in a tab the reviewer may skip: edge cases, security risks and gaps. */
-export function skippableRecords(tab: Tab): (EdgeCase | Risk | Gap)[] {
+/** The records in a tab the reviewer may skip: edge cases, security risks, performance concerns and gaps. */
+export function skippableRecords(tab: Tab): (EdgeCase | Risk | Concern | Gap)[] {
   if (tab.kind === "edge_cases") return tab.cases;
   if (tab.kind === "security") return tab.risks;
+  if (tab.kind === "performance") return tab.concerns;
   if (tab.kind === "gaps") return tab.gaps;
   return [];
 }

@@ -791,7 +791,7 @@ html.sp-review .sp-option:has(input:not(:disabled)):hover input:not(:checked) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
-/* --- skipping edge cases, risks and gaps --- */
+/* --- skipping edge cases, risks, performance concerns and gaps --- */
 
 /* The title hugs its text so Skip sits beside it, and the header keeps the top-right corner clear
    for the hover Comment button. */

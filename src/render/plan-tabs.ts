@@ -5,13 +5,20 @@ import { md, mdInline } from "./markdown.ts";
 import { eyebrow, idChip, plainText, refs, target } from "./parts.ts";
 import { renderSequence } from "./sequence.ts";
 import { skippableRecords, tabCount } from "../plan/metrics.ts";
-import type { Block, Priority, Tab, TabOf } from "../plan/schema.ts";
+import type { Block, PerformanceCategory, Priority, Tab, TabOf } from "../plan/schema.ts";
 import type { ReviewRecord } from "../protocol.ts";
 
 type Skips = ReviewRecord["skips"];
 
 const PRIORITY_LABELS: Record<Priority, string> = { high: "High", medium: "Medium", low: "Low" };
 const TONE_LABELS = { note: "Note", decision: "Decision", warning: "Warning", risk: "Risk" } as const;
+const CATEGORY_LABELS: Record<PerformanceCategory, string> = {
+  concurrency: "Concurrency",
+  queries: "Queries",
+  retries: "Retries",
+  volume: "Volume",
+  caching: "Caching",
+};
 const STATE_COLUMNS = [
   ["creates", "Creates"],
   ["updates", "Updates"],
@@ -53,6 +60,25 @@ export function renderTab(tab: Tab, path: string, skips: Skips): Interpolation {
             record: r,
             skips,
             body: html`<div class="sp-md">${md(r.exposure)}</div><div class="sp-mitigations">${eyebrow("Mitigation paths")}<ul>${r.mitigations.map((m) => html`<li>${mdInline(m)}</li>`)}</ul></div>`,
+          }),
+      );
+    case "performance":
+      return groupedByPriority(
+        tab.concerns,
+        (c) => c.priority,
+        skips,
+        (c, i) =>
+          skippableItem({
+            path: `${path}.concerns[${i}]`,
+            kind: "concern",
+            record: c,
+            skips,
+            tag: html`<span class="sp-category">${CATEGORY_LABELS[c.category]}</span>`,
+            body: html`<div class="sp-md">${md(c.issue)}</div><div class="sp-approach">${eyebrow("Approach")}<div class="sp-md">${md(c.approach)}</div></div>${
+              c.tradeoffs.length
+                ? html`<div class="sp-tradeoffs">${eyebrow("Trade-offs")}<ul>${c.tradeoffs.map((t) => html`<li>${mdInline(t)}</li>`)}</ul></div>`
+                : null
+            }`,
           }),
       );
     case "gaps":
@@ -206,7 +232,7 @@ const caption = (text: string | undefined) => (text ? html`<figcaption>${mdInlin
 // --- skippable items ---
 
 /**
- * An edge case, security risk or gap the reviewer can skip. Skips are the reviewer's call and live
+ * An edge case, security risk, performance concern or gap the reviewer can skip. Skips are the reviewer's call and live
  * in the review record; a skipped item stays in the plan, dimmed and marked, so it reads as a decision.
  */
 function skippableItem({
@@ -214,14 +240,17 @@ function skippableItem({
   kind,
   record,
   skips,
+  tag = null,
   body,
 }: {
   path: string;
   kind: string;
   record: { id: string; title: string };
   skips: Skips;
+  /** A label shown beside the title, such as a performance concern's category. */
+  tag?: Html | null;
   body: Html;
 }): Html {
   const skipped = Boolean(skips[record.id]);
-  return html`<article class="sp-item sp-skippable${skipped ? " sp-skipped" : null}"${target(path, kind, `${record.id}: ${record.title}`, record.id)} data-sp-skippable="${record.id}"${skipped ? html` data-sp-skipped` : null}><header class="sp-item-head">${idChip(record.id)}<h3 class="sp-item-title">${mdInline(record.title)}</h3>${skipped ? html`<span class="sp-skip-pill">Skipped</span>` : null}</header><div class="sp-item-body">${body}</div></article>`;
+  return html`<article class="sp-item sp-skippable${skipped ? " sp-skipped" : null}"${target(path, kind, `${record.id}: ${record.title}`, record.id)} data-sp-skippable="${record.id}"${skipped ? html` data-sp-skipped` : null}><header class="sp-item-head">${idChip(record.id)}<h3 class="sp-item-title">${mdInline(record.title)}</h3>${tag}${skipped ? html`<span class="sp-skip-pill">Skipped</span>` : null}</header><div class="sp-item-body">${body}</div></article>`;
 }

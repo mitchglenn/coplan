@@ -153,7 +153,7 @@ function feedbackOutput(file: string, items: FeedbackItem[], stage: PollStage): 
     out.next_step = sentences(
       `The reviewer submitted the key decisions: ${decisions.answered.length} of ${total} answered.`,
       lightweight
-        ? `Now write the lightweight plan \`coplan guide lightweight\` describes - an overview, the main flow and the edge cases that matter, in ${LIGHTWEIGHT.minutes} minutes of reading or less - as \`tabs\` in ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`
+        ? `Now write the lightweight plan \`coplan guide lightweight\` describes - an overview, the main flow, the edge cases that matter and, only if scale or concurrency is a real trade-off, a short performance tab, in ${LIGHTWEIGHT.minutes} minutes of reading or less - as \`tabs\` in ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`
         : `Now write the plan: read \`coplan guide plan\` and \`coplan guide tabs\`, then add \`tabs\` to ${f}. Do not change \`decisions\` - that re-opens them for the reviewer.`,
       decisions.answered.length > 0 &&
         "Every answered decision is a requirement, free-text answers included; the plan must follow them.",

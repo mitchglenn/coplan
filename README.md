@@ -69,6 +69,7 @@ It steps through the same checkpoints, each cut down so the whole review takes a
 
 - **3-5 key decisions** instead of 8-12.
 - **A plan that reads in 3 minutes:** a short overview, the main flow, and the edge cases that matter, with security risks folded in.
+  A performance tab of up to 3 concerns joins them when scale or concurrency is a real trade-off.
 - **2-4 light slices** if you choose to slice, each a goal, a few acceptance criteria and up to 4 tasks.
 
 The agent reads the codebase as thoroughly as for any plan, and one guide covers every step.
@@ -100,7 +101,9 @@ A plan is built from typed tabs, so every plan has the same shape and every item
 - `overview` (required): the problem today, the change, goals, out of scope, and what the codebase says.
 - `flows`: sequence diagrams drawn from structured steps, with the state each flow creates, updates and reads.
 - `concepts`: entities with their rules and constraints.
-- `edge_cases` and `security`: grouped by priority.
+- `edge_cases`, `security` and `performance`: grouped by priority.
+  `performance` appears only when the feature has a real scale or concurrency trade-off, such as race conditions, locking, indexes, ORM queries, or retries and idempotency.
+  Each of its concerns says what breaks and under what load, the approach, and what it costs.
   You can skip any item, or any gap, that the plan does not need to address; the skip is saved at once and the agent plans no work for it.
 - `gaps`: what the plan does not cover yet.
 - `custom`: Markdown, callouts, tables, code, and HTML blocks, from static figures to interactive UI mocks.

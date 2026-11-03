@@ -15,7 +15,14 @@ export const DECISIONS_MAX = 12;
  * A lightweight plan keeps every checkpoint but shrinks each one, for when the whole review has to
  * fit in a few minutes. These limits drive its warnings and the guidance that promises them.
  */
-export const LIGHTWEIGHT = { decisionsMin: 3, decisionsMax: 5, minutes: 3, slicesMax: 4, tasksMax: 4 } as const;
+export const LIGHTWEIGHT = {
+  decisionsMin: 3,
+  decisionsMax: 5,
+  minutes: 3,
+  concernsMax: 3,
+  slicesMax: 4,
+  tasksMax: 4,
+} as const;
 /** Tabs the engine adds itself, so a plan may not claim their ids. */
 export const RESERVED_TAB_IDS = ["questions", "slices"] as const;
 
@@ -82,7 +89,7 @@ const flow = z.strictObject({
   notes: markdown.optional(),
 });
 
-// --- concepts, edge cases, security, gaps ---
+// --- concepts, edge cases, security, performance, gaps ---
 
 const entity = z.strictObject({
   id,
@@ -100,6 +107,19 @@ const risk = z.strictObject({
   level: z.enum(PRIORITIES),
   exposure: markdown,
   mitigations: list(markdown, { min: 1, max: 10 }),
+});
+
+/** What a performance concern is about; it labels the concern for a reviewer scanning the tab. */
+export const PERFORMANCE_CATEGORIES = ["concurrency", "queries", "retries", "volume", "caching"] as const;
+
+const concern = z.strictObject({
+  id,
+  title: label,
+  priority: z.enum(PRIORITIES),
+  category: z.enum(PERFORMANCE_CATEGORIES),
+  issue: markdown,
+  approach: markdown,
+  tradeoffs: optionalList(markdown, 6),
 });
 
 const gap = z.strictObject({ id, title: label, detail: markdown });
@@ -158,7 +178,7 @@ const block = z.discriminatedUnion(
 
 const tabBase = { id: tabId, title: label, intro: markdown.optional() };
 
-const TAB_KINDS = ["overview", "flows", "concepts", "edge_cases", "security", "gaps", "custom"] as const;
+const TAB_KINDS = ["overview", "flows", "concepts", "edge_cases", "security", "performance", "gaps", "custom"] as const;
 
 const tab = z.discriminatedUnion(
   "kind",
@@ -176,6 +196,7 @@ const tab = z.discriminatedUnion(
     z.strictObject({ ...tabBase, kind: z.literal("concepts"), entities: list(entity, { min: 1, max: 20 }) }),
     z.strictObject({ ...tabBase, kind: z.literal("edge_cases"), cases: list(edgeCase, { min: 1, max: 40 }) }),
     z.strictObject({ ...tabBase, kind: z.literal("security"), risks: list(risk, { min: 1, max: 30 }) }),
+    z.strictObject({ ...tabBase, kind: z.literal("performance"), concerns: list(concern, { min: 1, max: 20 }) }),
     z.strictObject({ ...tabBase, kind: z.literal("gaps"), gaps: list(gap, { min: 1, max: 20 }) }),
     z.strictObject({ ...tabBase, kind: z.literal("custom"), blocks: list(block, { min: 1, max: 30 }) }),
   ],
@@ -267,6 +288,8 @@ export type Step = Flow["steps"][number];
 export type Entity = TabOf<"concepts">["entities"][number];
 export type EdgeCase = TabOf<"edge_cases">["cases"][number];
 export type Risk = TabOf<"security">["risks"][number];
+export type Concern = TabOf<"performance">["concerns"][number];
+export type PerformanceCategory = Concern["category"];
 export type Gap = TabOf<"gaps">["gaps"][number];
 export type Block = TabOf<"custom">["blocks"][number];
 export type Slice = NonNullable<Plan["slices"]>[number];

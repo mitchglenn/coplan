@@ -61,6 +61,10 @@ const TAB_SHAPES = {
   concepts: { entities: "required [{ id, name, definition, rules?: [Markdown], constraints?: [Markdown] }]" },
   edge_cases: { cases: "required [{ id, title, priority: high|medium|low, detail }]" },
   security: { risks: "required [{ id, title, level: high|medium|low, exposure, mitigations: [Markdown] }]" },
+  performance: {
+    concerns:
+      "required [{ id, title, priority: high|medium|low, category: concurrency|queries|retries|volume|caching, issue, approach, tradeoffs?: [Markdown] }]",
+  },
   gaps: { gaps: "required [{ id, title, detail }]" },
   custom: {
     blocks:
@@ -103,24 +107,26 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "small: overview, one flow, edge cases; fold security into edge cases; skip concepts.",
       "standard: overview, two or three flows, concepts, edge cases and security grouped by priority, gaps.",
       "large: every tab the feature needs, every meaningful flow, and a serious gaps tab.",
+      "Any budget: add a performance tab only when the feature has a scale or concurrency trade-off worth a reviewer's minute.",
       "A finished small plan beats an unfinished thorough one. Cut detail before raising the budget.",
     ],
     tabs: [
       "overview (required, first): the problem as it exists today, what the change introduces, goals as outcomes, and a specific, slightly generous out_of_scope list. findings cite the files that constrain the plan.",
       "flows: one per meaningful path, two or three is usually right; more than five means the scope is too big. Each has a trigger, a sequence of steps between real participants, and state changes split into creates, updates and reads. Naming what a flow only reads is what surfaces the authorization questions.",
       "concepts: one entity per concept the feature introduces or changes, with a one-sentence definition, rules (who owns it, when it exists, what it may do) and constraints (uniqueness, idempotency, cardinality - these become database constraints and tests).",
-      "The reviewer can skip edge_cases, security and gaps items directly on the page. A skipped item stays in plan.json untouched and Coplan marks it; every poll lists current skips in `skipped`. Plan no work for them and do not delete them.",
+      "The reviewer can skip edge_cases, security, performance and gaps items directly on the page. A skipped item stays in plan.json untouched and Coplan marks it; every poll lists current skips in `skipped`. Plan no work for them and do not delete them.",
       "edge_cases: grouped by priority. Each says what goes wrong and why it matters; a case with no consequence is trivia. Cover concurrent or repeated actions, stale data between decision and execution, deleted or inaccessible references, partial failure, and the empty and very large cases.",
       "security: grouped by risk level, each with the exposure and mitigation paths. Work through authorization at use time, data exposure, enumeration, input trust, and rate/abuse.",
+      'performance (optional): add it only when the feature has a real scale or concurrency trade-off the reviewer should weigh in on: shared state written concurrently, counters or balances, hot paths, large or fast-growing tables, retried jobs or external calls. Most features need none; a generic tab ("add indexes", "cache it") is noise. Each concern names its category - concurrency (race conditions, atomic updates, locking), queries (indexes, ORM N+1, unbounded reads), retries (idempotency, timeouts, duplicate delivery), volume (batching, pagination, background work) or caching (staleness, invalidation) - says in issue what breaks and under what load, in approach what the plan does about it, and in tradeoffs what that costs or what the alternative was. Ground each in this codebase: the table, the query, the job.',
       "gaps: the coverage check. What you set aside, what needs someone else's decision, what you are unsure about. A plan with no gaps is one nobody believes.",
-      "Order tabs so each builds on the last: overview, flows, concepts, then a data-model custom tab if there is one, then edge_cases, security, any other custom tabs, and gaps last.",
+      "Order tabs so each builds on the last: overview, flows, concepts, then a data-model custom tab if there is one, then edge_cases, security, performance, any other custom tabs, and gaps last.",
       "custom: anything the shape of this feature needs - a data model table, an API contract, a UI mock or before/after toggle as an html block, a decision callout.",
     ],
     writing: [
       "Verify every claim against the codebase before stating it as fact; cite the file in findings or refs. Label inference as inference.",
       "Keep items short: a bold title and two or three sentences. Prose belongs in the overview; everything else is scannable items.",
       "Never invent a requirement the request did not contain - ask it as a question instead.",
-      "Give every record a short stable id with a prefix: D decisions, F flows, C concepts, E edge cases, R risks, G gaps, Q questions, B blocks, S slices, S1.T1 tasks. Ids are one namespace across the plan, and feedback refers to them.",
+      "Give every record a short stable id with a prefix: D decisions, F flows, C concepts, E edge cases, R risks, P performance concerns, G gaps, Q questions, B blocks, S slices, S1.T1 tasks. Ids are one namespace across the plan, and feedback refers to them.",
       "Markdown fields accept emphasis, `code`, links and lists. Raw HTML in Markdown is shown as text; use a custom tab's html block for figures.",
     ],
     questions: [
@@ -176,7 +182,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
       "Each slice has a goal (what someone can do afterwards), a demo (how a reviewer sees it working), acceptance criteria, and 1-8 tasks.",
       "The first slice is the thinnest path through the whole system, even if it is ugly. Later slices widen it: validation, edge cases, permissions, polish.",
       "A slice with nothing to demo is horizontal: it lays groundwork, such as tables or endpoints nothing calls yet, for a later slice. Merge it into the slice that first needs it, or justify it (a migration that must ship first, say).",
-      "Map the plan onto the slices: every flow, edge case and security mitigation you intend to build should land in some slice's acceptance or tasks. Edge cases, risks and gaps the reviewer skipped (the poll's `skipped` list) need no work at all. What does not land is out of scope or a gap - say which.",
+      "Map the plan onto the slices: every flow, edge case, security mitigation and performance approach you intend to build should land in some slice's acceptance or tasks. Edge cases, risks, performance concerns and gaps the reviewer skipped (the poll's `skipped` list) need no work at all. What does not land is out of scope or a gap - say which.",
       "depends_on between slices defines phases; slices in one phase can be built in parallel. Keep the graph shallow.",
       "Tasks name the files they touch when you know them, a layer, and a relative size S/M/L. A task is something one engineer finishes in a sitting or two.",
     ],
@@ -217,7 +223,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
     ],
     plan: [
       `It must read in ${LIGHTWEIGHT.minutes} minutes or less; \`coplan render\` warns past that. Leave \`budget\` out: a lightweight plan has its own.`,
-      "Tabs, in order: overview; flows with the one main flow (a second only if it is a genuinely different path); edge_cases with 3-6 cases, high and medium priority only, security risks folded in as cases.",
+      `Tabs, in order: overview; flows with the one main flow (a second only if it is a genuinely different path); edge_cases with 3-6 cases, high and medium priority only, security risks folded in as cases; then, only when the feature has a real scale or concurrency trade-off, performance with 1-${LIGHTWEIGHT.concernsMax} concerns, high and medium priority only.`,
       "overview: problem and change in a sentence or two each, 2-4 goals, a short out_of_scope list that also names what you set aside, and findings only for the files that constrain the plan. No gaps tab.",
       "Add another tab only when the feature cannot be understood without it, such as a small data model table in a custom tab.",
       "Verify what you state against the code; label inference as inference. Never invent a requirement - ask it as a question instead, and only when you cannot proceed without the answer.",
@@ -238,6 +244,7 @@ const TOPICS: Record<string, () => Record<string, unknown>> = {
         overview: TAB_SHAPES.overview,
         flows: TAB_SHAPES.flows,
         edge_cases: TAB_SHAPES.edge_cases,
+        performance: TAB_SHAPES.performance,
       },
       question: QUESTION_SHAPE,
       slices: `[{ id: 'S1', title, goal, acceptance: [Markdown] (1-3), tasks: [{ id: 'S1.T1', title, detail? }] (1-${LIGHTWEIGHT.tasksMax}), depends_on?: [slice ids], demo? }]`,

@@ -150,7 +150,7 @@ export interface ReviewRecord {
     plan?: Approval & { next?: NextStep };
     slices?: Approval;
   };
-  /** Edge cases, risks and gaps the reviewer skipped, by id. */
+  /** Edge cases, risks, performance concerns and gaps the reviewer skipped, by id. */
   skips: Record<string, { at: string }>;
   queue: FeedbackBatch[];
   history: HistoryEntry[];

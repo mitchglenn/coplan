@@ -5,7 +5,7 @@ import { deriveStage, type ReviewCheckpoints, type Stage } from "../src/plan/sta
 import type { ReviewBootstrap, TaskRecord } from "../src/protocol.ts";
 import { renderPlanHtml } from "../src/render/page.ts";
 import { renderSequence } from "../src/render/sequence.ts";
-import { decisionsOnlyPlan, examplePlan, SLICES, submittedReview, validPlan } from "./helpers.ts";
+import { decisionsOnlyPlan, examplePlan, planWithPerformance, SLICES, submittedReview, validPlan } from "./helpers.ts";
 
 function render(
   planJson: unknown,
@@ -94,6 +94,34 @@ test("skipped items stay visible, marked, and leave the priority count", () => {
   assert.match(
     html,
     /data-sp-id="E1"[^>]*data-sp-skipped>.*?<div class="sp-item-body"><div class="sp-md"><p>Two tabs/s,
+  );
+});
+
+test("performance concerns render by priority with their category, approach and trade-offs, and can be skipped", () => {
+  const valid = validPlan(planWithPerformance());
+  const html = renderPlanHtml({
+    plan: valid,
+    stage: deriveStage(valid, submittedReview(valid)),
+    reading: readingTime(valid),
+    skips: { P2: { at: "2026-09-23T00:00:00Z" } },
+    file: "/tmp/plan.json",
+  });
+  assert.match(html, /data-tab="performance"[^>]*><span>Performance<\/span><span class="sp-tab-count">1<\/span>/);
+  const panel = /<section class="sp-panel sp-panel-performance".*?<\/section>\n/s.exec(html)?.[0] ?? "";
+  assert.match(
+    panel,
+    /data-sp-target="tabs\[6\]\.concerns\[0\]" data-sp-kind="concern"[^>]*data-sp-skippable="P1">.*?<span class="sp-category">Concurrency<\/span>/s,
+  );
+  assert.match(panel, /<div class="sp-approach"><span class="sp-eyebrow">Approach<\/span>.*?<code>UPDATE/s);
+  assert.match(
+    panel,
+    /<div class="sp-tradeoffs"><span class="sp-eyebrow">Trade-offs<\/span><ul><li>A failed reservation/,
+  );
+  assert.match(panel, /Low<span class="sp-count">0<\/span><span class="sp-count-skipped">1 skipped<\/span>/);
+  assert.doesNotMatch(
+    /data-sp-id="P2".*?<\/article>/s.exec(panel)?.[0] ?? "",
+    /sp-tradeoffs/,
+    "a concern without trade-offs shows none",
   );
 });
 

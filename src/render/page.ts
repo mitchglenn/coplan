@@ -28,7 +28,7 @@ export interface PageInput {
   file: string;
   /** The reviewer's submitted decision answers. */
   answers?: Record<string, DecisionAnswer>;
-  /** Edge cases, risks and gaps the reviewer skipped, by id. */
+  /** Edge cases, risks, performance concerns and gaps the reviewer skipped, by id. */
   skips?: ReviewRecord["skips"];
   /** What the agent reported about each task while building the approved slices. */
   tasks?: Record<string, TaskRecord>;
